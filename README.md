@@ -30,7 +30,19 @@ Use the COM port the puck shows up as (`arduino-cli board list`; its USB product
 If the upload can't find the board, hold **BOOT** while plugging it in: a drive called `RPI-RP2`
 appears; upload with `-p UF2_Board`, or copy a `.uf2` onto the drive.
 
-Audio is off until the amp is fitted: set `ENABLE_AUDIO 1` in `config.h`.
+**Branch `prototype0`:** builds for prototype 0, a KB2040 wired to a 16-LED WS2812 ring and a
+MAX98357A I2S amp:
+
+| KB2040 | Goes to |
+|---|---|
+| D2 (GPIO2) | ring DIN |
+| D4 (GPIO4) | MAX98357A LRC |
+| D5 (GPIO5) | MAX98357A BCLK |
+| D6 (GPIO6) | MAX98357A DIN |
+| RAW (USB 5 V), GND | ring 5V/GND, MAX98357A VIN/GND |
+
+Its `BOARD_ID` is `kb2040-proto0`, so the settings page never offers it plain-KB2040 firmware.
+Keep the overall brightness moderate: 16 LEDs at full white draw about 1 A, more than a USB port gives.
 
 ## Serial protocol
 

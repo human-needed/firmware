@@ -15,12 +15,17 @@ $sketch = Join-Path $PSScriptRoot 'humanneeded'
 $config = Get-Content (Join-Path $sketch 'config.h') -Raw
 
 $version = [regex]::Match($config, '#define FW_VERSION "([^"]+)"').Groups[1].Value
-$boards = @{ 'kb2040' = 'rp2040:rp2040:adafruit_kb2040' }  # add 'rp2040-zero' when it's in use
-$board = [regex]::Match($config, '(?m)^#define BOARD_KB2040\s+1') | ForEach-Object { if ($_.Success) { 'kb2040' } }
-if (-not $board) { throw 'release.ps1 only knows the KB2040 build so far; add the board to $boards.' }
+# Board define in config.h -> BOARD_ID and arduino-cli FQBN. Add 'rp2040-zero' when it's in use.
+$boards = @(
+    @{ define = 'BOARD_PROTO0'; id = 'kb2040-proto0'; fqbn = 'rp2040:rp2040:adafruit_kb2040' },
+    @{ define = 'BOARD_KB2040'; id = 'kb2040';        fqbn = 'rp2040:rp2040:adafruit_kb2040' }
+)
+$selected = $boards | Where-Object { $config -match "(?m)^#define $($_.define)\s+1" } | Select-Object -First 1
+if (-not $selected) { throw 'release.ps1 does not know the board selected in config.h; add it to $boards.' }
+$board = $selected.id
 
 $build = Join-Path $env:TEMP 'humanneeded-release'
-& arduino-cli compile --fqbn $boards[$board] --output-dir $build $sketch
+& arduino-cli compile --fqbn $selected.fqbn --output-dir $build $sketch
 if ($LASTEXITCODE) { throw 'Build failed' }
 
 $file = "humanneeded-$board-$version.uf2"

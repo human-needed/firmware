@@ -1,4 +1,5 @@
 #include <EEPROM.h>
+#include "config.h"
 #include "settings.h"
 
 #define SETTINGS_MAGIC 0x484E0003  // "HN" + layout version 3
@@ -17,7 +18,7 @@ void settingsDefaults() {
   //                       colour    light            bright  secs  sound
   setStyle(ST_NEEDS,   0xFFA62B, LIGHT_PULSE,     100,    0,    SOUND_RISING);
   setStyle(ST_DONE,    0x22E04A, LIGHT_PULSE,     100,    3,    SOUND_CHIME);
-  setStyle(ST_WORKING, 0x3366FF, LIGHT_BREATHE,   100,    0,    SOUND_NONE);
+  setStyle(ST_WORKING, 0x3366FF, LED_COUNT >= 3 ? LIGHT_SPIN : LIGHT_BREATHE, 100, 0, SOUND_NONE);  // spin needs a ring
   setStyle(ST_IDLE,    0xFFD2A0, LIGHT_SOLID,     20,     0,    SOUND_NONE);
 }
 

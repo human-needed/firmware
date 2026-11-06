@@ -5,11 +5,21 @@
 #define USB_PRODUCT_NAME "HumanNeeded"
 
 // ---- Board selection: set exactly one to 1 ----
-#define BOARD_KB2040       1   // Adafruit KB2040 (test board)
+#define BOARD_PROTO0       1   // Prototype 0: KB2040 + 16-LED ring + MAX98357A amp
+#define BOARD_KB2040       0   // Adafruit KB2040 alone (test board, onboard NeoPixel)
 #define BOARD_RP2040_ZERO  0   // Waveshare RP2040-Zero (prototype board)
 #define BOARD_HN_V1        0   // HumanNeeded main board HN-08 rev A (pcb/)
 
-#if BOARD_KB2040
+#if BOARD_PROTO0
+  // KB2040 pins D2-D6 are GPIO2-GPIO6.
+  #define BOARD_ID      "kb2040-proto0"  // own id, so the settings page never offers it plain KB2040 firmware
+  #define LED_PIN       2      // D2: ring data in
+  #define LED_COUNT     16
+  #define I2S_LRCLK_PIN 4      // D4: MAX98357A LRC
+  #define I2S_BCLK_PIN  5      // D5: MAX98357A BCLK
+  #define I2S_DATA_PIN  6      // D6: MAX98357A DIN
+  #define ENABLE_AUDIO  1
+#elif BOARD_KB2040
   #define BOARD_ID   "kb2040"  // names the firmware file for this board
   #define LED_PIN    17        // onboard NeoPixel
   #define LED_COUNT  1
@@ -28,15 +38,17 @@
 #else
   #error "Select a board in config.h"
 #endif
-// When the 16-LED ring arrives: point LED_PIN at its data pin and set LED_COUNT 16.
 
 // ---- Audio: MAX98357A over I2S, or PWM if the board sets AUDIO_PWM_PIN. ----
 // Off on the test boards until the amp + speaker arrive.
 #ifndef ENABLE_AUDIO
 #define ENABLE_AUDIO     0
 #endif
-#define I2S_BCLK_PIN     26    // LRCLK is always BCLK + 1 (27)
+// I2S clock pins must be neighbours: LRCLK is BCLK + 1, or BCLK - 1 when the board sets I2S_LRCLK_PIN so.
+#ifndef I2S_BCLK_PIN
+#define I2S_BCLK_PIN     26
 #define I2S_DATA_PIN     28
+#endif
 #define AUDIO_RATE       22050
 
 // ---- Behaviour constants from SPEC.md ----

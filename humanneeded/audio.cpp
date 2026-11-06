@@ -67,7 +67,12 @@ void audioBegin() {
 #ifdef AUDIO_PWM_PIN
   out.begin(AUDIO_RATE, AUDIO_PWM_HZ);
 #else
-  out.setBCLK(I2S_BCLK_PIN);
+#if defined(I2S_LRCLK_PIN) && I2S_LRCLK_PIN == I2S_BCLK_PIN - 1
+  out.swapClocks();             // LRCLK sits just below BCLK...
+  out.setBCLK(I2S_LRCLK_PIN);  // ...and setBCLK takes the lower of the two pins
+#else
+  out.setBCLK(I2S_BCLK_PIN);   // LRCLK is BCLK + 1
+#endif
   out.setDATA(I2S_DATA_PIN);
   out.setBitsPerSample(16);
   out.begin(AUDIO_RATE);
