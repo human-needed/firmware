@@ -12,10 +12,14 @@ static const char *const LIGHT_NAMES[LIGHT_COUNT] = {
 
 enum Sound : uint8_t {
   SOUND_NONE, SOUND_DING, SOUND_CHIME, SOUND_RISING, SOUND_ARPEGGIO,
-  SOUND_BELL, SOUND_BEEPS, SOUND_BLOOP, SOUND_COUNT
+  SOUND_BELL, SOUND_BEEPS, SOUND_BLOOP,
+  // Melodies. Saved settings store the number, so only ever add at the end.
+  SOUND_BRIGHT, SOUND_CLOCK, SOUND_DOORBELL, SOUND_FANFARE, SOUND_RIPPLE, SOUND_CALL,
+  SOUND_LULLABY, SOUND_HARP, SOUND_COUNT
 };
 static const char *const SOUND_NAMES[SOUND_COUNT] = {
-  "none", "ding", "chime", "rising", "arpeggio", "bell", "beeps", "bloop"
+  "none", "ding", "chime", "rising", "arpeggio", "bell", "beeps", "bloop",
+  "bright", "clock", "doorbell", "fanfare", "ripple", "call", "lullaby", "harp"
 };
 
 // The same settings for every state; keys are "<state>.<name>", e.g. "needs.color".

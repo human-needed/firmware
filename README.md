@@ -64,7 +64,7 @@ The puck shows the highest-priority live session: needs > done > working > idle.
 Settings: global `brightness` and `volume` (0-100), plus per state (`needs`, `done`, `working`, `idle`)
 `<state>.color` `#RRGGBB`, `.light` `off|solid|breathe|pulse|blink|heartbeat|flicker|spin`,
 `.brightness` 0-100, `.duration` seconds 0-3600 (0 = as long as the state lasts),
-`.sound` `none|ding|chime|rising|arpeggio|bell|beeps|bloop`, `.volume` 0-100, `.repeat` 1-5.
+`.sound` `none|ding|chime|rising|arpeggio|bell|beeps|bloop|bright|clock|doorbell|fanfare|ripple|call|lullaby|harp`, `.volume` 0-100, `.repeat` 1-5.
 
 ## Release
 

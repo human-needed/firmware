@@ -18,7 +18,10 @@ $version = [regex]::Match($config, '#define FW_VERSION "([^"]+)"').Groups[1].Val
 # Board define in config.h -> BOARD_ID and arduino-cli FQBN. Add 'rp2040-zero' when it's in use.
 $boards = @(
     @{ define = 'BOARD_PROTO0'; id = 'kb2040-proto0'; fqbn = 'rp2040:rp2040:adafruit_kb2040' },
-    @{ define = 'BOARD_KB2040'; id = 'kb2040';        fqbn = 'rp2040:rp2040:adafruit_kb2040' }
+    @{ define = 'BOARD_KB2040'; id = 'kb2040';        fqbn = 'rp2040:rp2040:adafruit_kb2040' },
+    # HN-08: 2 MB flash read with the generic boot stage. freq=125 is required: at the core's
+    # default 200 MHz the board cannot run from its flash and never comes up on USB.
+    @{ define = 'BOARD_HN_V1';  id = 'hn-v1';         fqbn = 'rp2040:rp2040:generic:flash=2097152_0,freq=125' }
 )
 $selected = $boards | Where-Object { $config -match "(?m)^#define $($_.define)\s+1" } | Select-Object -First 1
 if (-not $selected) { throw 'release.ps1 does not know the board selected in config.h; add it to $boards.' }

@@ -33,8 +33,11 @@
   #define LED_COUNT     16
   #define AUDIO_PWM_PIN 4      // PWM audio -> RC filter -> 8002A amp (no I2S on this board)
   #define AUDIO_PWM_HZ  200000 // PWM carrier; the board's RC filter is set for it
+  #define AUDIO_PWM_OSR 8      // PWM periods per audio sample (see audioTick)
+  #define AUDIO_RATE    25000  // AUDIO_PWM_HZ / AUDIO_PWM_OSR, so samples and PWM periods line up
   #define AMP_SD_PIN    5      // amp shutdown, high = off (pulled low on the board)
   #define ENABLE_AUDIO  1
+  #define AUDIO_NORMALIZE 1    // amp gain is only 2: use the full PWM swing for every sound
 #else
   #error "Select a board in config.h"
 #endif
@@ -49,7 +52,12 @@
 #define I2S_BCLK_PIN     26
 #define I2S_DATA_PIN     28
 #endif
+#ifndef AUDIO_RATE
 #define AUDIO_RATE       22050
+#endif
+#ifndef AUDIO_NORMALIZE
+#define AUDIO_NORMALIZE  0    // 1: scale each sound so its peak is full scale (see audio.cpp)
+#endif
 
 // ---- Behaviour constants from SPEC.md ----
 #define MAX_SESSIONS        16
