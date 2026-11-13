@@ -1,5 +1,9 @@
 # HumanNeeded firmware
 
+> **Status (2026-11): 0.x is the prototype protocol.** Firmware 2.0 (new puck protocol driven by the
+> HumanNeeded app, button support, no software bootloader entry) is in development. 0.x pucks will
+> need reflashing; there is no backward compatibility.
+
 Firmware for the [HumanNeeded](https://human-needed.com) puck: a USB desk light that glows and chimes
 when your AI coding agent is working, done, or needs you. RP2040, Arduino sketch on the
 [earlephilhower arduino-pico](https://github.com/earlephilhower/arduino-pico) core.
