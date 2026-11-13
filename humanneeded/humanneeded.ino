@@ -70,6 +70,9 @@ static void handleCommand(char *cmdLine) {
     if (!settingsGetJson(a1, json)) return err("unknown key");
     Serial.println(json);
 
+  } else if (!strcasecmp(cmd, "SCHEMA")) {  // the settings page's layout, one JSON line
+    settingsPrintSchema(Serial);
+
   } else if (!strcasecmp(cmd, "RESET")) {  // settings back to defaults
     settingsDefaults();
     settingsSave();

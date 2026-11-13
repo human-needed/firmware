@@ -1,33 +1,18 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "0.2.0"
+#define FW_VERSION "0.3.0"
 #define USB_PRODUCT_NAME "HumanNeeded"
 
-// ---- Board selection: set exactly one to 1 ----
-#define BOARD_PROTO0       1   // Prototype 0: KB2040 + 16-LED ring + MAX98357A amp
-#define BOARD_KB2040       0   // Adafruit KB2040 alone (test board, onboard NeoPixel)
-#define BOARD_RP2040_ZERO  0   // Waveshare RP2040-Zero (prototype board)
-#define BOARD_HN_V1        0   // HumanNeeded main board HN-08 rev A (pcb/)
+// ---- Board ----
+// The puck is the HN board. BOARD_PROTO0 is the hand-wired prototype, kept for development.
+// A plain build is the HN board; release.ps1 builds the prototype with -DBOARD_PROTO0.
+// (The KB2040-alone and RP2040-Zero test boards are no longer supported, from 0.3.0.)
+#if !defined(BOARD_PROTO0)
+#define BOARD_HN_V1 1
+#endif
 
-#if BOARD_PROTO0
-  // KB2040 pins D2-D6 are GPIO2-GPIO6.
-  #define BOARD_ID      "kb2040-proto0"  // own id, so the settings page never offers it plain KB2040 firmware
-  #define LED_PIN       2      // D2: ring data in
-  #define LED_COUNT     16
-  #define I2S_LRCLK_PIN 4      // D4: MAX98357A LRC
-  #define I2S_BCLK_PIN  5      // D5: MAX98357A BCLK
-  #define I2S_DATA_PIN  6      // D6: MAX98357A DIN
-  #define ENABLE_AUDIO  1
-#elif BOARD_KB2040
-  #define BOARD_ID   "kb2040"  // names the firmware file for this board
-  #define LED_PIN    17        // onboard NeoPixel
-  #define LED_COUNT  1
-#elif BOARD_RP2040_ZERO
-  #define BOARD_ID   "rp2040-zero"
-  #define LED_PIN    16        // onboard WS2812
-  #define LED_COUNT  1
-#elif BOARD_HN_V1
+#if defined(BOARD_HN_V1)
   #define BOARD_ID      "hn-v1"
   #define LED_PIN       28     // ring data, buffered to 5 V; chain runs clockwise from LED16
   #define LED_COUNT     16
@@ -38,12 +23,18 @@
   #define AMP_SD_PIN    5      // amp shutdown, high = off (pulled low on the board)
   #define ENABLE_AUDIO  1
   #define AUDIO_NORMALIZE 1    // amp gain is only 2: use the full PWM swing for every sound
-#else
-  #error "Select a board in config.h"
+#elif defined(BOARD_PROTO0)
+  // Prototype 0: KB2040 + 16-LED ring + MAX98357A amp. KB2040 pins D2-D6 are GPIO2-GPIO6.
+  #define BOARD_ID      "kb2040-proto0"
+  #define LED_PIN       2      // D2: ring data in
+  #define LED_COUNT     16
+  #define I2S_LRCLK_PIN 4      // D4: MAX98357A LRC
+  #define I2S_BCLK_PIN  5      // D5: MAX98357A BCLK
+  #define I2S_DATA_PIN  6      // D6: MAX98357A DIN
+  #define ENABLE_AUDIO  1
 #endif
 
 // ---- Audio: MAX98357A over I2S, or PWM if the board sets AUDIO_PWM_PIN. ----
-// Off on the test boards until the amp + speaker arrive.
 #ifndef ENABLE_AUDIO
 #define ENABLE_AUDIO     0
 #endif

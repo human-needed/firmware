@@ -9,6 +9,10 @@ enum Light : uint8_t {
 static const char *const LIGHT_NAMES[LIGHT_COUNT] = {
   "off", "solid", "breathe", "pulse", "blink", "heartbeat", "flicker", "spin"
 };
+// What the settings page shows for each (sent with SCHEMA).
+static const char *const LIGHT_LABELS[LIGHT_COUNT] = {
+  "Off", "Solid", "Breathe (slow)", "Pulse", "Blink", "Heartbeat", "Candle flicker", "Spin (LED ring)"
+};
 
 enum Sound : uint8_t {
   SOUND_NONE, SOUND_DING, SOUND_CHIME, SOUND_RISING, SOUND_ARPEGGIO,
@@ -20,6 +24,11 @@ enum Sound : uint8_t {
 static const char *const SOUND_NAMES[SOUND_COUNT] = {
   "none", "ding", "chime", "rising", "arpeggio", "bell", "beeps", "bloop",
   "bright", "clock", "doorbell", "fanfare", "ripple", "call", "lullaby", "harp"
+};
+static const char *const SOUND_LABELS[SOUND_COUNT] = {
+  "No sound", "Ding", "Chime (falling)", "Rising", "Arpeggio", "Bell", "Beeps", "Bloop",
+  "Bright (melody)", "Clock (melody)", "Doorbell (melody)", "Fanfare (melody)", "Ripple (melody)",
+  "Call (melody)", "Lullaby (melody)", "Harp (melody)"
 };
 
 // The same settings for every state; keys are "<state>.<name>", e.g. "needs.color".
@@ -52,3 +61,8 @@ bool settingsSet(const char *key, const char *value);
 // Appends the JSON for one key, or for every key when key is "all".
 // Returns false for an unknown key.
 bool settingsGetJson(const char *key, String &out);
+
+// Prints the settings page's layout as one JSON line: every setting, its type, range or
+// options, label and help text. The page builds its form from this, so it always matches
+// the firmware on the puck. Format in README.md (SCHEMA).
+void settingsPrintSchema(Print &out);
