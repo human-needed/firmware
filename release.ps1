@@ -38,8 +38,11 @@ foreach ($b in $boards) {
     $files += $file
 }
 
-& gh release view "v$version" --repo $repo *> $null
-if ($LASTEXITCODE) {
+# List the tags rather than `gh release view`: its "release not found" on stderr would stop this
+# script ($ErrorActionPreference = 'Stop' turns native stderr into an error in PowerShell 5.1).
+$tags = & gh release list --repo $repo --limit 100 --json tagName --jq '.[].tagName'
+if ($LASTEXITCODE) { throw 'Could not list GitHub releases (gh auth status?)' }
+if ($tags -notcontains "v$version") {
     & gh release create "v$version" @files --repo $repo --title "Firmware $version" --notes "Install it from https://human-needed.com/settings/ (Update firmware)."
 } else {
     & gh release upload "v$version" @files --repo $repo --clobber
