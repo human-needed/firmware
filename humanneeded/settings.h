@@ -1,5 +1,8 @@
 #pragma once
+// Settings: values, parsing, JSON and the stored format. No hardware here (flash I/O is in
+// humanneeded.ino), so it is unit-tested on the PC too.
 #include "state.h"
+#include "core.h"
 
 // Light modes and sounds, by the names used in the serial protocol.
 enum Light : uint8_t {
@@ -9,7 +12,7 @@ enum Light : uint8_t {
 static const char *const LIGHT_NAMES[LIGHT_COUNT] = {
   "off", "solid", "breathe", "pulse", "blink", "heartbeat", "flicker", "spin"
 };
-// What the settings page shows for each (sent with SCHEMA).
+// What the settings form shows for each (sent with SCHEMA).
 static const char *const LIGHT_LABELS[LIGHT_COUNT] = {
   "Off", "Solid", "Breathe (slow)", "Pulse", "Blink", "Heartbeat", "Candle flicker", "Spin (LED ring)"
 };
@@ -32,37 +35,42 @@ static const char *const SOUND_LABELS[SOUND_COUNT] = {
 };
 
 // The same settings for every state; keys are "<state>.<name>", e.g. "needs.color".
+// The idle state has no sound (sound/volume/repeat are not offered for it).
+// Layout is shared with the stored format: don't reorder.
 struct StateStyle {
   uint32_t color;       // 0xRRGGBB
   uint8_t light;        // Light
   uint8_t brightness;   // 0-100, scaled by the global brightness
-  uint16_t duration;    // seconds the light shows this state (0 = as long as the state lasts)
-  uint8_t sound;        // Sound, played when a session enters this state
+  uint16_t duration;    // seconds the light shows this state (0 = as long as it lasts; done: 1-3600)
+  uint8_t sound;        // Sound, played when the state starts
   uint8_t volume;       // 0-100, scaled by the global volume
   uint8_t repeat;       // play the sound 1-5 times
 };
 
 struct Settings {
-  uint32_t magic;       // marks valid data in flash; bump when layout changes
   uint8_t brightness;   // global 0-100
   uint8_t volume;       // global 0-100
   StateStyle state[ST_COUNT];
 };
 
 extern Settings settings;
+extern uint16_t settingsDurations[ST_COUNT];  // settings.state[i].duration, for Engine::dur
 
-void settingsLoad();
-void settingsDefaults();
-void settingsSave();
+void settingsDefaults(Settings &s);
+// Puts every field in range. Returns true if anything changed.
+bool settingsClamp(Settings &s);
+// Call after changing `settings` directly (refreshes settingsDurations).
+void settingsUpdated();
 
-// Sets one key from its text value and saves. Returns false on bad key/value.
+// Sets one key from its text value. Returns false on a bad key or value (nothing changes).
 bool settingsSet(const char *key, const char *value);
+// JSON object with one key, or every key for "all". Returns false for an unknown key.
+bool settingsGetJson(const char *key, Buf &out);
+// The settings form layout as one JSON object (format in README.md, SCHEMA).
+void settingsSchema(Buf &out, bool audio);
 
-// Appends the JSON for one key, or for every key when key is "all".
-// Returns false for an unknown key.
-bool settingsGetJson(const char *key, String &out);
-
-// Prints the settings page's layout as one JSON line: every setting, its type, range or
-// options, label and help text. The page builds its form from this, so it always matches
-// the firmware on the puck. Format in README.md (SCHEMA).
-void settingsPrintSchema(Print &out);
+// Stored format: magic, Settings, CRC32. Older layouts are migrated on load.
+#define SETTINGS_STORE_SIZE 64
+size_t settingsEncode(const Settings &s, uint8_t *raw);  // returns bytes used
+// Reads stored bytes. Returns false if there is nothing valid (caller uses defaults).
+bool settingsDecode(const uint8_t *raw, size_t n, Settings &out);

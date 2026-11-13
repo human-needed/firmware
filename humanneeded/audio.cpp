@@ -2,16 +2,33 @@
 #include "audio.h"
 #include "settings.h"
 
+static bool audioSuspended = false;
+
+static uint8_t muteMode = 0;  // 0 off, 1 until turned off, 2 timed
 static uint32_t mutedUntil = 0;
 static uint32_t playCount = 0;
 static uint8_t lastSound = SOUND_NONE;
 
 void audioMute(uint32_t minutes) {
-  mutedUntil = minutes ? millis() + minutes * 60000UL : 0;
+  muteMode = minutes ? 2 : 0;
+  mutedUntil = millis() + minutes * 60000UL;
+  if (minutes) audioStop();
+}
+
+void audioMuteOn() {
+  muteMode = 1;
+  audioStop();
 }
 
 bool audioMuted() {
-  return mutedUntil && (int32_t)(mutedUntil - millis()) > 0;
+  if (muteMode == 2 && timeReached(millis(), mutedUntil)) muteMode = 0;
+  return muteMode != 0;
+}
+
+void audioMuteText(char *out, size_t n) {
+  if (!audioMuted()) snprintf(out, n, "off");
+  else if (muteMode == 1) snprintf(out, n, "on");
+  else snprintf(out, n, "%lu", (unsigned long)((mutedUntil - millis() + 59999) / 60000));
 }
 
 uint32_t audioPlayCount() { return playCount; }
@@ -19,7 +36,7 @@ uint8_t audioLastSound() { return lastSound; }
 
 // Returns false if nothing should play.
 static bool startPlay(uint8_t sound) {
-  if (sound == SOUND_NONE || sound >= SOUND_COUNT || audioMuted()) return false;
+  if (sound == SOUND_NONE || sound >= SOUND_COUNT || audioMuted() || audioSuspended) return false;
   playCount++;
   lastSound = sound;
   return true;
@@ -70,7 +87,13 @@ static const SoundDef SOUNDS[SOUND_COUNT] = {
   {true, {{1047, 0, 600}, {1319, 70, 600}, {1568, 140, 600}, {2093, 210, 600}, {2637, 280, 600},
           {1047, 500, 1300}, {1319, 540, 1300}, {1568, 580, 1300}}},
 };
+// SELFTEST: a plain sweep up through the speaker's range, one note at a time.
+static const SoundDef SWEEP = {false, {{300, 0, 130}, {400, 130, 130}, {530, 260, 130}, {700, 390, 130},
+  {930, 520, 130}, {1240, 650, 130}, {1650, 780, 130}, {2000, 910, 130}, {2400, 1040, 130},
+  {2900, 1170, 130}, {3400, 1300, 130}, {4000, 1430, 130}}};
 static const uint16_t REPEAT_GAP_MS = 350;
+#define AMP_WARMUP_MS 20   // amp on this long before the first note
+#define AMP_TAIL_MS   80   // and off this long after the last (covers the 41 ms PWM buffer)
 
 #ifdef AUDIO_PWM_PIN
 static PWMAudio out(AUDIO_PWM_PIN);  // mono
@@ -88,6 +111,16 @@ static int gain = 0;  // 0-256
 static int32_t pwmLevels = 1;
 #endif
 static int norm = 256 / 3;  // mix scale, 256 = 1.0
+static uint32_t preroll = 0;  // silent samples before the notes (amp warm-up)
+static bool ampOn = false;
+static uint32_t stoppedMs = 0;
+
+static void amp(bool on) {
+  ampOn = on;
+#ifdef AMP_SD_PIN
+  digitalWrite(AMP_SD_PIN, on ? LOW : HIGH);  // SD high = shut down
+#endif
+}
 
 // Envelope of a note at time ms, 0-256 (the same curve nextSample() uses).
 static int32_t noteEnv(const Note &note, int32_t ms) {
@@ -120,8 +153,8 @@ void audioBegin() {
   for (int i = 0; i < (1 << SINE_BITS); i++) sine[i] = 32767 * sinf(i * 2 * PI / (1 << SINE_BITS));
 #ifdef AMP_SD_PIN
   pinMode(AMP_SD_PIN, OUTPUT);
-  digitalWrite(AMP_SD_PIN, LOW);  // amp on
 #endif
+  amp(false);  // only on while a sound plays
 #ifdef AUDIO_PWM_PIN
   // The PWM only has F_CPU / AUDIO_PWM_HZ levels (625 at 125 MHz), so it is fed one word per
   // PWM period, AUDIO_PWM_OSR times the audio rate, and audioTick() noise-shapes the samples.
@@ -141,9 +174,12 @@ void audioBegin() {
 #endif
 }
 
-void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat) {
-  if (!startPlay(sound)) return;
-  playing = &SOUNDS[sound];
+static void startSound(const SoundDef *def, int g, uint8_t repeat) {
+  if (!ampOn) {
+    amp(true);
+    preroll = AMP_WARMUP_MS * AUDIO_RATE / 1000;
+  }
+  playing = def;
   soundLen = 0;
   for (int n = 0; n < MAX_NOTES; n++) {
     const Note &note = playing->notes[n];
@@ -153,13 +189,36 @@ void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat) {
   repeatsLeft = constrain(repeat, 1, 5);
   sampleIdx = 0;
   memset(phase, 0, sizeof(phase));
-  gain = 256L * volume * settings.volume / 10000;
+  gain = g;
   norm = soundNorm(playing);
 }
 
+void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat) {
+  if (!startPlay(sound)) return;
+  startSound(&SOUNDS[sound], 256L * volume * settings.volume / 10000, repeat);
+}
+
+void audioSweep() {
+  if (audioSuspended) return;
+  startSound(&SWEEP, 200, 1);  // fixed level: a factory test ignores settings and mute
+}
+
+void audioStop() {
+  if (playing) stoppedMs = millis();
+  playing = nullptr;
+}
+
+bool audioPlaying() { return playing != nullptr || ampOn; }
+
+void audioSuspend(bool on) {
+  audioSuspended = on;
+  if (on) { audioStop(); amp(false); }
+}
+
 static int16_t nextSample() {
+  if (preroll) { preroll--; return 0; }
   if (sampleIdx >= soundLen) {  // one play finished: repeat or stop
-    if (--repeatsLeft == 0) { playing = nullptr; return 0; }
+    if (--repeatsLeft == 0) { playing = nullptr; stoppedMs = millis(); return 0; }
     sampleIdx = 0;
     memset(phase, 0, sizeof(phase));
   }
@@ -186,6 +245,10 @@ static int16_t nextSample() {
   return constrain(mix * norm / 256 * gain / 256, -32767, 32767);
 }
 
+static void ampTick() {
+  if (ampOn && !playing && millis() - stoppedMs >= AMP_TAIL_MS) amp(false);
+}
+
 #ifdef AUDIO_PWM_PIN
 // PWM output. Two things the plain "write each sample" loop gets wrong on this hardware:
 // - Resolution: 625 PWM levels is about 9 bits, which sounds gritty on the quiet tail of a note.
@@ -196,6 +259,7 @@ static int16_t nextSample() {
 //   above the wrap value, so the pin jumps to 100 % duty. So this never lets it run dry: it
 //   keeps writing the midpoint while nothing plays.
 void audioTick() {
+  ampTick();
   static int32_t prev = 0, carry = 0;
   while (out.availableForWrite() >= 4 * AUDIO_PWM_OSR) {
     int32_t cur = playing ? nextSample() : 0;
@@ -212,6 +276,7 @@ void audioTick() {
 }
 #else
 void audioTick() {
+  ampTick();
   while (playing && out.availableForWrite() >= 4) {  // one stereo I2S frame
     int16_t s = nextSample();
     out.write16(s, s);
@@ -228,5 +293,9 @@ void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat) {
   (void)repeat;
   startPlay(sound);
 }
+void audioSweep() {}
+void audioStop() {}
+bool audioPlaying() { return false; }
+void audioSuspend(bool on) { audioSuspended = on; }
 
 #endif

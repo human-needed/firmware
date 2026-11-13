@@ -1,8 +1,7 @@
 # HumanNeeded firmware
 
-> **Status (2026-11): 0.x is the prototype protocol.** Firmware 2.0 (new puck protocol driven by the
-> HumanNeeded app, button support, no software bootloader entry) is in development. 0.x pucks will
-> need reflashing; there is no backward compatibility.
+> **Firmware 2.0 speaks `hn-usb/2`**: the HumanNeeded app owns the puck and sends full-state
+> snapshots under a lease. 0.x was the prototype protocol; there is no backward compatibility.
 
 Firmware for the [HumanNeeded](https://human-needed.com) puck: a USB desk light that glows and chimes
 when your AI coding agent is working, done, or needs you. RP2040, Arduino sketch on the
@@ -27,15 +26,15 @@ arduino-cli lib install "Adafruit NeoPixel"
 Build and upload for the HumanNeeded board (pins are in `humanneeded/config.h`):
 
 ```powershell
-arduino-cli compile -u --fqbn "rp2040:rp2040:generic:flash=2097152_0,freq=125" -p COM4 humanneeded
+arduino-cli compile --fqbn "rp2040:rp2040:generic:flash=2097152_0,freq=125" --output-dir build humanneeded
 ```
 
 `freq=125` is required: at the core's default 200 MHz the board can't run from its flash and
 never comes up on USB.
 
-Use the COM port the puck shows up as (`arduino-cli board list`; its USB product is `HumanNeeded`).
-If the upload can't find the board, hold **BOOT** while plugging it in: a drive called `RPI-RP2`
-appears; upload with `-p UF2_Board`, or copy a `.uf2` onto the drive.
+Firmware 2.0 has no 1200-baud reset, so `arduino-cli upload -p COMx` can't restart it. Send
+`BOOTSEL` on the puck's port (or hold the button / BOOT pad while plugging it in): a drive called
+`RPI-RP2` appears; copy `build/humanneeded.ino.uf2` onto it.
 
 **Prototype 0** (development only): a KB2040 wired to a 16-LED WS2812 ring and a MAX98357A I2S
 amp. Build it with `--fqbn rp2040:rp2040:adafruit_kb2040 --build-property "compiler.cpp.extra_flags=-DBOARD_PROTO0"`.
@@ -52,28 +51,46 @@ Its `BOARD_ID` is `kb2040-proto0`. The KB2040-alone and RP2040-Zero test boards 
 supported from 0.3.0.
 Keep the overall brightness moderate: 16 LEDs at full white draw about 1 A, more than a USB port gives.
 
-## Serial protocol
+## Serial protocol (`hn-usb/2`)
 
-USB CDC, 115200 baud, lines ending in `\n`. Each command gets one reply: `OK`, `ERR <msg>`, or one line of JSON.
+USB CDC, lines ending in `
+` (`` ignored), at most 1024 bytes (longer: `ERR line too long`; a half
+line with no byte for 500 ms is dropped). Each command gets one reply within 500 ms: `OK`,
+`ERR <msg>`, or one line of JSON. Lines starting with `!` are events from the puck: `!HELLO` once
+after each USB connect (when the host opens the port), so the app re-sends its state.
 
 | Command | Does |
 |---|---|
-| `HELLO` | `{"name":"HumanNeeded","fw":"0.3.0","board":"hn-v1","serial":"HN..."}` |
-| `EV <working\|needs\|done\|idle\|end> <session_id> [agent]` | report a session's state |
-| `SET <key> <value>` / `GET <key\|all>` / `RESET` | settings, saved in flash |
-| `SCHEMA` | every setting with its type, options and help text, as one line of JSON (from 0.3.0) |
-| `MUTE <minutes>` | silence sound (0 = unmute) |
-| `TEST <state\|hello>` | preview a state as configured |
-| `CLEAR` | forget all sessions |
-| `BOOTSEL` / `REBOOT` | restart into the UF2 bootloader / restart |
-| `STATUS`, `SKIP <minutes>` | debugging: state and session table; move the session clock forward |
+| `HELLO` | `{"name":"HumanNeeded","fw":"2.0.0","board":"hn-v1","serial":"HN...","proto":2}` |
+| `SNAP <lease_s> [<id>:<state> ...]` | the whole session table: lease 5-600 s, id 8 lowercase hex, state `working` or `needs`, max 32 |
+| `FLASH done` | one-off done light and sound |
+| `SET <key> <value>` / `GET <key\|all>` / `RESET` | settings; saved to flash 2 s after the last change, only if changed |
+| `SCHEMA` | every setting with its type, options and help text, as one line of JSON |
+| `MUTE <0-1440\|on>` | silence sound: 0 = unmute, minutes, or until turned off |
+| `TEST <needs\|done\|working\|idle\|hello>` | preview a state as configured, max 10 s, ended by any real change |
+| `STATUS` | `{"proto":2,"lease_left":s,"shown":..,"muted":..,"entries":[..],"sounds":n,"last_sound":..,"saves":n}` |
+| `SELFTEST` | factory test: replies serial and button state, then each LED R/G/B and a speaker sweep |
+| `BOOTSEL` / `REBOOT` | restart into the UF2 bootloader / restart (settings kept) |
 
-The puck shows the highest-priority live session: needs > done > working > idle.
+The ring shows, highest first: `TEST` preview, `FLASH done`, needs, working, idle. When the lease
+runs out (or on USB unmount, bus reset, power-up) the table is cleared. USB suspend turns the ring
+fully dark. The needs sound plays when an id enters needs. Power-up is silent. No 1200-baud reset:
+the bootloader is reached with `BOOTSEL` or by holding the button while plugging in.
+
+The full contract lives in the project's PM hub (`pm/contracts/usb-protocol.md`).
+
+## Tests
+
+- `test/core_test.cpp`: unit tests of the parser, lease logic and settings, on the PC:
+  `g++ -std=gnu++17 -Ihumanneeded test/core_test.cpp humanneeded/core.cpp humanneeded/settings.cpp -o core_test && ./core_test`
+- `test/hil_test.py`: drives a real puck through every command and the lease rules
+  (`pip install pyserial`, then `python test/hil_test.py`; `--bootsel <uf2>` also tests an update).
 
 Settings (the full list, with labels, is what `SCHEMA` returns): global `brightness` and `volume` (0-100), plus per state (`needs`, `done`, `working`, `idle`)
 `<state>.color` `#RRGGBB`, `.light` `off|solid|breathe|pulse|blink|heartbeat|flicker|spin`,
-`.brightness` 0-100, `.duration` seconds 0-3600 (0 = as long as the state lasts),
-`.sound` `none|ding|chime|rising|arpeggio|bell|beeps|bloop|bright|clock|doorbell|fanfare|ripple|call|lullaby|harp`, `.volume` 0-100, `.repeat` 1-5.
+`.brightness` 0-100, `.duration` seconds 0-3600 (0 = as long as the state lasts; `done` 1-3600),
+`.sound` `none|ding|chime|rising|arpeggio|bell|beeps|bloop|bright|clock|doorbell|fanfare|ripple|call|lullaby|harp`, `.volume` 0-100, `.repeat` 1-5
+(idle has no sound settings). Stored with a CRC and clamped on load; 0.3.0 settings are migrated.
 
 ### SCHEMA
 
@@ -100,8 +117,7 @@ needs no change.
   `text` (`maxlength`). The page shows any other type as a text box.
 - `tip`: help text behind a "?" button. Every value is set with `SET <key> <value>` and read from
   `GET all`.
-- Firmware older than 0.3.0 answers `ERR unknown command`; the page then uses its built-in copy of
-  the 0.2.0 layout.
+- `done.duration` uses the `done_duration` list (no "as long as it lasts").
 
 ## Release
 

@@ -12,6 +12,8 @@ static int lastState = -1;
 static uint32_t changeMs = 0;
 static uint32_t helloStart = 0;
 static bool helloActive = false;
+static uint32_t selftestStart = 0;
+static bool selftestActive = false;
 
 void ledsBegin() {
   strip.begin();
@@ -23,6 +25,13 @@ void ledsHello() {
   helloStart = millis();
   helloActive = true;
 }
+
+void ledsSelftest() {
+  selftestStart = millis();
+  selftestActive = true;
+}
+
+bool ledsSelftestActive() { return selftestActive; }
 
 // 0..1 wave with the given period: 1 at t=0 (so a new state starts bright), 0 at half period.
 static float wave(uint32_t t, uint32_t periodMs) {
@@ -84,8 +93,43 @@ static RGB helloColor(uint32_t elapsed, int i) {
   return scaled(c, settings.brightness / 100.0f * (1 - (float)elapsed / HELLO_MS));
 }
 
-void ledsRender(State state) {
+// Writes the frame, scaled down if it would draw more than the current budget.
+static void show(bool sound) {
+  float sum = 0;
+  for (int i = 0; i < LED_COUNT; i++) sum += shown[i].r + shown[i].g + shown[i].b;
+  float ma = sum / 255 * LED_MA_PER_CHANNEL;
+  float budget = sound ? LED_BUDGET_SOUND_MA : LED_BUDGET_MA;
+  float k = ma > budget ? budget / ma : 1;
+  for (int i = 0; i < LED_COUNT; i++) {
+    strip.setPixelColor(i, (uint8_t)(shown[i].r * k), (uint8_t)(shown[i].g * k), (uint8_t)(shown[i].b * k));
+  }
+  strip.show();
+}
+
+void ledsRender(State state, bool dark, bool sound) {
   uint32_t t = millis();
+
+  if (dark) {  // USB suspend: fully dark; fade back in on resume
+    memset(shown, 0, sizeof(shown));
+    lastState = -1;
+    helloActive = selftestActive = false;
+    show(sound);
+    return;
+  }
+
+  if (selftestActive) {  // factory test: each LED red, green, blue in turn, full level
+    uint32_t step = (t - selftestStart) / SELFTEST_STEP_MS;
+    if (step >= 3UL * LED_COUNT) {
+      selftestActive = false;
+      lastState = -1;
+    } else {
+      memset(shown, 0, sizeof(shown));
+      RGB &p = shown[step / 3];
+      (step % 3 == 0 ? p.r : step % 3 == 1 ? p.g : p.b) = 255;
+      show(sound);
+      return;
+    }
+  }
 
   if (helloActive && t - helloStart >= HELLO_MS) {
     helloActive = false;
@@ -107,7 +151,6 @@ void ledsRender(State state) {
                   from[i].g + (to.g - from[i].g) * mix,
                   from[i].b + (to.b - from[i].b) * mix};
     }
-    strip.setPixelColor(i, (uint8_t)shown[i].r, (uint8_t)shown[i].g, (uint8_t)shown[i].b);
   }
-  strip.show();
+  show(sound);
 }
