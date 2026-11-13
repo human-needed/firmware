@@ -209,6 +209,7 @@ void audioStop() {
 }
 
 bool audioPlaying() { return playing != nullptr || ampOn; }
+bool audioAmpOn() { return ampOn; }
 
 void audioSuspend(bool on) {
   audioSuspended = on;
@@ -296,6 +297,7 @@ void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat) {
 void audioSweep() {}
 void audioStop() {}
 bool audioPlaying() { return false; }
+bool audioAmpOn() { return false; }
 void audioSuspend(bool on) { audioSuspended = on; }
 
 #endif

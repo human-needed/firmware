@@ -19,6 +19,8 @@ static Snap snap;                 // parse target (too big for the stack comfort
 static char outMem[8192];         // every reply is built here, then sent in chunks
 static Buf out(outMem, sizeof(outMem));
 static bool testSound = false;    // the sound playing belongs to a TEST preview
+static uint32_t suspendCount = 0; // USB suspends since power-up (debug)
+static float suspendMaxMa = 0;    // highest LED current drawn while suspended (debug)
 
 // ---- 1200-baud reset off ----
 // arduino-pico reboots into the bootloader when a host opens the port at 1200 baud and drops
@@ -151,7 +153,17 @@ static void statusJson() {
   // Beyond the contract, for the host test script: sounds played, the last one, flash saves.
   out.addf("],\"sounds\":%lu,\"last_sound\":", (unsigned long)audioPlayCount());
   out.str(SOUND_NAMES[audioLastSound()]);
-  out.addf(",\"saves\":%lu}", (unsigned long)saveCount);
+  out.addf(",\"saves\":%lu", (unsigned long)saveCount);
+#ifdef HN_DEBUG  // hardware checks (test/hil_debug.py): amp pin, LED current estimate, last reset
+#ifdef AMP_SD_PIN
+  int ampPin = gpio_get_out_level(AMP_SD_PIN) ? 0 : 1;  // SD low = amp on
+#else
+  int ampPin = audioAmpOn();
+#endif
+  out.addf(",\"dbg\":{\"amp\":%d,\"led_ma\":%d,\"reset\":%d,\"suspends\":%lu,\"suspend_ma\":%d}", ampPin,
+           (int)ledsLastMa(), (int)rp2040.getResetReason(), (unsigned long)suspendCount, (int)suspendMaxMa);
+#endif
+  out.addc('}');
 }
 
 static void restart(bool bootloader) {
@@ -275,6 +287,12 @@ static void handleLine(char *line) {
     testSound = false;
     audioSweep();
 
+#ifdef HN_DEBUG
+  } else if (!strcasecmp(cmd, "HANG")) {  // debug build only: stop feeding the watchdog
+    ok();
+    delay(20);
+    while (true) {}
+#endif
   } else {
     err("unknown command");
   }
@@ -331,6 +349,7 @@ void loop() {
   if (suspended != wasSuspended) {
     wasSuspended = suspended;
     audioSuspend(suspended);
+    if (suspended) suspendCount++;
   }
   // "!HELLO" once per USB connect, HELLO_DELAY_MS after the host opens the port: Windows
   // drivers purge what arrives while the port is being opened.
@@ -352,5 +371,6 @@ void loop() {
   if (millis() - lastFrame >= 16) {  // ~60 fps
     lastFrame = millis();
     ledsRender(engine.shown(millis()), suspended, audioPlaying());
+    if (suspended && ledsLastMa() > suspendMaxMa) suspendMaxMa = ledsLastMa();
   }
 }

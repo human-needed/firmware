@@ -94,12 +94,16 @@ static RGB helloColor(uint32_t elapsed, int i) {
 }
 
 // Writes the frame, scaled down if it would draw more than the current budget.
+static float lastMa = 0;
+float ledsLastMa() { return lastMa; }
+
 static void show(bool sound) {
   float sum = 0;
   for (int i = 0; i < LED_COUNT; i++) sum += shown[i].r + shown[i].g + shown[i].b;
   float ma = sum / 255 * LED_MA_PER_CHANNEL;
   float budget = sound ? LED_BUDGET_SOUND_MA : LED_BUDGET_MA;
   float k = ma > budget ? budget / ma : 1;
+  lastMa = ma * k;
   for (int i = 0; i < LED_COUNT; i++) {
     strip.setPixelColor(i, (uint8_t)(shown[i].r * k), (uint8_t)(shown[i].g * k), (uint8_t)(shown[i].b * k));
   }

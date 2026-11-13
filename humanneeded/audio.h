@@ -12,6 +12,7 @@ void audioPlay(uint8_t sound, uint8_t volume, uint8_t repeat);
 void audioSweep();          // SELFTEST speaker sweep (ignores mute and volume settings)
 void audioStop();
 bool audioPlaying();        // a sound plays or the amp is still on
+bool audioAmpOn();
 void audioSuspend(bool on); // USB suspend: stop, amp off, play nothing until resumed
 
 void audioMute(uint32_t minutes);  // 0 = unmute, else timed

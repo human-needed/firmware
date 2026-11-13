@@ -1,7 +1,8 @@
 # Builds the firmware for every board, publishes it as a GitHub release, and points the
 # settings page's "Update firmware" button at it:
 #   GitHub release v<version> on human-needed/firmware with humanneeded-<board>-<version>.uf2
-#   <web repo>/public/firmware/latest.json   { "<board>": { "version", "file", "url" } }
+#   <web repo>/public/firmware/latest.json   { "<board>": { "version", "file", "url", "sha256" } }
+#   (sha256: lowercase hex of the .uf2; the app refuses an entry without it)
 # Then commit and push the web repo; Cloudflare Pages deploys it.
 # The version is FW_VERSION in humanneeded/config.h. Needs arduino-cli and gh (`gh auth login`).
 #
@@ -58,10 +59,12 @@ if (Test-Path $latestPath) {
 }
 foreach ($b in $boards) {
     $file = "humanneeded-$($b.id)-$version.uf2"
+    $sha = (Get-FileHash -Algorithm SHA256 (Join-Path $build $file)).Hash.ToLower()
     $latest[$b.id] = [ordered]@{
         version = $version
         file    = $file
         url     = "https://github.com/$repo/releases/download/v$version/$file"
+        sha256  = $sha
     }
 }
 $latest | ConvertTo-Json | Set-Content $latestPath -Encoding ascii
