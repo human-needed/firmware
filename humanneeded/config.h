@@ -1,8 +1,13 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "0.3.0"
+#define FW_VERSION "2.0.0"
+#define PROTO_VERSION 2           // hn-usb/2, pm/contracts/usb-protocol.md
 #define USB_PRODUCT_NAME "HumanNeeded"
+#define USB_VID_HN 0x2E8A         // Raspberry Pi
+// USB PID: 0 keeps the core's default for the board until Raspberry Pi assigns ours (D-035).
+// Set it here and nowhere else.
+#define USB_PID_HN 0
 
 // ---- Board ----
 // The puck is the HN board. BOARD_PROTO0 is the hand-wired prototype, kept for development.
@@ -50,9 +55,20 @@
 #define AUDIO_NORMALIZE  0    // 1: scale each sound so its peak is full scale (see audio.cpp)
 #endif
 
-// ---- Behaviour constants from SPEC.md ----
-#define MAX_SESSIONS        16
-#define WORKING_STALE_MS    (30UL * 60 * 1000)  // working with no event -> idle
-#define TEST_PREVIEW_MS     5000                // how long TEST <state> shows
-#define HELLO_MS            1500                // boot spin length
-#define FADE_MS             600                 // cross-fade between states
+// ---- Behaviour constants ----
+#define HELLO_MS            1500    // hello spin length
+#define FADE_MS             600     // cross-fade between states
+#define SAVE_DELAY_MS       2000    // settings go to flash this long after the last change
+#define WATCHDOG_MS         3000    // longer than the worst flash erase + write
+#define REPLY_TIMEOUT_MS    400     // give up sending a reply the host doesn't read
+#define HELLO_DELAY_MS      150     // "!HELLO" this long after the host opens the port
+#define SELFTEST_STEP_MS    120     // SELFTEST: time per LED colour
+
+// ---- LED current cap ----
+// Estimated draw of one LED channel at full level. Not measured on the XL-2020 yet (P9):
+// measure full white on a rev A board and correct this.
+#ifndef LED_MA_PER_CHANNEL
+#define LED_MA_PER_CHANNEL  12.0f
+#endif
+#define LED_BUDGET_MA       300.0f  // LEDs, normally
+#define LED_BUDGET_SOUND_MA 180.0f  // LEDs while the amp is on (amp peak ~280 mA, USB 500 mA)

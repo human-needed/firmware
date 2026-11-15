@@ -1,0 +1,13 @@
+name: test
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests (parser, lease, settings)
+        run: |
+          g++ -std=gnu++17 -Wall -Ihumanneeded test/core_test.cpp humanneeded/core.cpp humanneeded/settings.cpp -o core_test
+          ./core_test
