@@ -1,7 +1,7 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "2.0.0"
+#define FW_VERSION "2.0.1"
 #define PROTO_VERSION 2           // hn-usb/2, pm/contracts/usb-protocol.md
 #define USB_PRODUCT_NAME "HumanNeeded"
 #define USB_VID_HN 0x2E8A         // Raspberry Pi
@@ -46,7 +46,7 @@
 #define WATCHDOG_MS         3000    // longer than the worst flash erase + write
 #define REPLY_TIMEOUT_MS    400     // give up sending a reply the host doesn't read
 #define HELLO_DELAY_MS      150     // "!HELLO" this long after the host opens the port
-#define SELFTEST_STEP_MS    120     // SELFTEST: time per LED colour
+#define SELFTEST_STEP_MS    240     // SELFTEST: time per LED colour (11.5 s for 16 LEDs x R/G/B)
 
 // ---- LED current cap ----
 // Estimated draw of one LED channel at full level. Not measured on the XL-2020 yet (P9):

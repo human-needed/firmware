@@ -25,6 +25,9 @@ import serial
 import serial.tools.list_ports
 
 VID = 0x2E8A
+# The version this checkout builds (humanneeded/config.h).
+FW_VERSION = re.search(r'#define FW_VERSION "([^"]+)"', open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "..", "humanneeded", "config.h")).read()).group(1)
 REPLY_LIMIT = 0.5  # seconds, contract section 1
 
 results = []       # (name, ok, detail)
@@ -140,7 +143,7 @@ def sounds(p):
 
 def test_identity(p):
     h = p.json("HELLO")
-    check("HELLO name/fw/proto", h.get("name") == "HumanNeeded" and h.get("fw") == "2.0.0" and h.get("proto") == 2, h)
+    check("HELLO name/fw/proto", h.get("name") == "HumanNeeded" and h.get("fw") == FW_VERSION and h.get("proto") == 2, h)
     check("HELLO board", h.get("board") == "hn-v1", h.get("board"))
     check("HELLO serial = HN + 16 hex", re.fullmatch(r"HN[0-9A-F]{16}", h.get("serial", "")) is not None, h.get("serial"))
     usb = [x for x in serial.tools.list_ports.comports() if x.device == p.port]
@@ -424,7 +427,7 @@ def test_bootsel(p, serial_no, uf2):
     if port:
         p.port = port
         p.open()
-        check("HELLO after update", p.json("HELLO").get("fw") == "2.0.0")
+        check("HELLO after update", p.json("HELLO").get("fw") == FW_VERSION)
 
 
 def main():
