@@ -1,5 +1,7 @@
 # HumanNeeded firmware
 
+[![tests](https://github.com/human-needed/firmware/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/human-needed/firmware/actions/workflows/test.yml)
+
 > **Firmware 2.0 speaks `hn-usb/2`**: the HumanNeeded app owns the puck and sends full-state
 > snapshots under a lease. 0.x was the prototype protocol; there is no backward compatibility.
 
@@ -54,7 +56,8 @@ Keep the overall brightness moderate: 16 LEDs at full white draw about 1 A, more
 ## Serial protocol (`hn-usb/2`)
 
 USB CDC, lines ending in `
-` (`` ignored), at most 1024 bytes (longer: `ERR line too long`; a half
+` (`
+` ignored), at most 1024 bytes (longer: `ERR line too long`; a half
 line with no byte for 500 ms is dropped). Each command gets one reply within 500 ms: `OK`,
 `ERR <msg>`, or one line of JSON. Lines starting with `!` are events from the puck: `!HELLO` once
 after each USB connect (when the host opens the port), so the app re-sends its state.
