@@ -38,19 +38,7 @@ Firmware 2.0 has no 1200-baud reset, so `arduino-cli upload -p COMx` can't resta
 `BOOTSEL` on the puck's port (or hold the button / BOOT pad while plugging it in): a drive called
 `RPI-RP2` appears; copy `build/humanneeded.ino.uf2` onto it.
 
-**Prototype 0** (development only): a KB2040 wired to a 16-LED WS2812 ring and a MAX98357A I2S
-amp. Build it with `--fqbn rp2040:rp2040:adafruit_kb2040 --build-property "compiler.cpp.extra_flags=-DBOARD_PROTO0"`.
-
-| KB2040 | Goes to |
-|---|---|
-| D2 (GPIO2) | ring DIN |
-| D4 (GPIO4) | MAX98357A LRC |
-| D5 (GPIO5) | MAX98357A BCLK |
-| D6 (GPIO6) | MAX98357A DIN |
-| RAW (USB 5 V), GND | ring 5V/GND, MAX98357A VIN/GND |
-
-Its `BOARD_ID` is `kb2040-proto0`. The KB2040-alone and RP2040-Zero test boards are no longer
-supported from 0.3.0.
+Prototype 0 (KB2040) and the older test boards are no longer supported (from 2.0.0).
 Keep the overall brightness moderate: 16 LEDs at full white draw about 1 A, more than a USB port gives.
 
 ## Serial protocol (`hn-usb/2`)
