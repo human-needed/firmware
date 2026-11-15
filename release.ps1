@@ -20,13 +20,11 @@ $version = [regex]::Match($config, '#define FW_VERSION "([^"]+)"').Groups[1].Val
 $boards = @(
     # HN board: 2 MB flash read with the generic boot stage. freq=125 is required: at the core's
     # default 200 MHz the board cannot run from its flash and never comes up on USB.
-    @{ id = 'hn-v1';         fqbn = 'rp2040:rp2040:generic:flash=2097152_0,freq=125'; flags = '' },
-    # Prototype 0 (KB2040 + ring + MAX98357A), kept for development.
-    @{ id = 'kb2040-proto0'; fqbn = 'rp2040:rp2040:adafruit_kb2040';                  flags = '-DBOARD_PROTO0' }
+    @{ id = 'hn-v1';         fqbn = 'rp2040:rp2040:generic:flash=2097152_0,freq=125'; flags = '' }
 )
 # Boards no longer built. Their entries are removed from latest.json, so the settings page
 # stops offering them updates (they keep the firmware they have).
-$retired = @('kb2040', 'rp2040-zero')
+$retired = @('kb2040', 'rp2040-zero', 'kb2040-proto0')
 
 $build = Join-Path $env:TEMP 'humanneeded-release'
 $files = @()
