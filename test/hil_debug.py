@@ -55,9 +55,21 @@ def test_current_cap(p):
     check("full white while sound plays: LEDs capped at 180 mA", d.get("amp") == 1 and 150 <= d.get("led_ma", 0) <= 180, d)
     while dbg(p).get("amp") == 1:
         time.sleep(0.1)
-    time.sleep(0.2)
+    time.sleep(1.2)  # the cap eases back up over ~250 ms
     d = dbg(p)
     check("full white, no sound: LEDs capped at 300 mA (uncapped estimate 576)", 280 <= d.get("led_ma", 0) <= 300, d)
+    p.cmd("SNAP 30")
+
+
+def test_frames(p):
+    """Smooth light: frames every 5 ms (200 fps), none late, each cheap to draw."""
+    for snap, what in (("SNAP 30 00000006:working", "spin"), ("SNAP 30 00000006:needs", "pulse + sound")):
+        p.cmd(snap)
+        dbg(p)  # resets the counters
+        time.sleep(3)
+        d = dbg(p)
+        check(f"frames on time ({what}): longest gap <= 10 ms", 0 < d.get("frame_gap_max_ms", 99) <= 10, d)
+        check(f"frames cheap ({what}): slowest < 2.5 ms", 0 < d.get("frame_us_max", 99999) < 2500, d)
     p.cmd("SNAP 30")
 
 
@@ -105,6 +117,7 @@ def main():
         try:
             test_amp(p)
             test_current_cap(p)
+            test_frames(p)
         finally:
             for k, v in saved.items():
                 p.cmd(f"SET {k} {v}")

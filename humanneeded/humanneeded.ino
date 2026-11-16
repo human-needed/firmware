@@ -21,6 +21,7 @@ static Buf out(outMem, sizeof(outMem));
 static bool testSound = false;    // the sound playing belongs to a TEST preview
 static uint32_t suspendCount = 0; // USB suspends since power-up (debug)
 static float suspendMaxMa = 0;    // highest LED current drawn while suspended (debug)
+static uint32_t frameGapMaxMs = 0, frameUsMax = 0;  // longest gap between frames, slowest frame (debug)
 
 // ---- 1200-baud reset off ----
 // arduino-pico reboots into the bootloader when a host opens the port at 1200 baud and drops
@@ -160,8 +161,10 @@ static void statusJson() {
 #else
   int ampPin = audioAmpOn();
 #endif
-  out.addf(",\"dbg\":{\"amp\":%d,\"led_ma\":%d,\"reset\":%d,\"suspends\":%lu,\"suspend_ma\":%d}", ampPin,
-           (int)ledsLastMa(), (int)rp2040.getResetReason(), (unsigned long)suspendCount, (int)suspendMaxMa);
+  out.addf(",\"dbg\":{\"amp\":%d,\"led_ma\":%d,\"reset\":%d,\"suspends\":%lu,\"suspend_ma\":%d,\"frame_gap_max_ms\":%lu,\"frame_us_max\":%lu}",
+           ampPin, (int)ledsLastMa(), (int)rp2040.getResetReason(), (unsigned long)suspendCount, (int)suspendMaxMa,
+           (unsigned long)frameGapMaxMs, (unsigned long)frameUsMax);
+  frameGapMaxMs = frameUsMax = 0;  // each STATUS reports the time since the previous one
 #endif
   out.addc('}');
 }
@@ -368,9 +371,13 @@ void loop() {
   handleEvents(engine.tick(millis()));
   saveTick(false);
 
-  if (millis() - lastFrame >= 16) {  // ~60 fps
+  if (millis() - lastFrame >= FRAME_MS) {
+    uint32_t gap = millis() - lastFrame, us = micros();
     lastFrame = millis();
     ledsRender(engine.shown(millis()), suspended, audioPlaying());
+    us = micros() - us;
+    if (gap > frameGapMaxMs) frameGapMaxMs = gap;
+    if (us > frameUsMax) frameUsMax = us;
     if (suspended && ledsLastMa() > suspendMaxMa) suspendMaxMa = ledsLastMa();
   }
 }

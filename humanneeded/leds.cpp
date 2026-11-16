@@ -6,7 +6,10 @@
 struct RGB { float r, g, b; };
 
 static Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-static RGB shown[LED_COUNT];  // what is on the LEDs now
+static RGB shown[LED_COUNT];  // what is on the LEDs now (linear light, 0-255 per channel, before the cap)
+static RGB ditherErr[LED_COUNT];  // rounding error carried to the next frame (temporal dithering)
+static float capK = 1;            // current-cap scale, eased so a sound starting doesn't jump the light
+static uint32_t lastShowMs = 0;
 static RGB from[LED_COUNT];   // snapshot at the last state change, for cross-fading
 static int lastState = -1;
 static uint32_t changeMs = 0;
@@ -33,9 +36,23 @@ void ledsSelftest() {
 
 bool ledsSelftestActive() { return selftestActive; }
 
+// Smoothstep: eases in and out, so fades and edges have no visible corner.
+static float ease(float x) {
+  x = constrain(x, 0.0f, 1.0f);
+  return x * x * (3 - 2 * x);
+}
+
 // 0..1 wave with the given period: 1 at t=0 (so a new state starts bright), 0 at half period.
 static float wave(uint32_t t, uint32_t periodMs) {
   return 0.5f + 0.5f * cosf(2 * PI * (t % periodMs) / periodMs);
+}
+
+// 1 between on and off (ms), 0 outside, with eased edges `edge` ms long instead of a hard step.
+static float square(uint32_t p, uint32_t on, uint32_t off, uint32_t edge) {
+  if (p < on || p >= off + edge) return 0;
+  if (p < on + edge) return ease((p - on) / (float)edge);
+  if (p < off) return 1;
+  return 1 - ease((p - off) / (float)edge);
 }
 
 // Light level (0..1) for pixel i, t ms after the state began.
@@ -45,11 +62,11 @@ static float lightLevel(uint8_t light, uint32_t t, int i) {
     case LIGHT_OFF:     return 0;
     case LIGHT_BREATHE: return 0.35f + 0.65f * wave(t, 4000);  // floor keeps the hue true
     case LIGHT_PULSE:   return 0.2f + 0.8f * wave(t, 1400);
-    case LIGHT_BLINK:   return (t % 1000) < 500 ? 1 : 0;
+    case LIGHT_BLINK:   return square(t % 1000, 0, 500, 60);  // on half a second, soft edges
     case LIGHT_HEARTBEAT: {
       // Two quick beats, then a rest, every 1.2 s.
       uint32_t p = t % 1200;
-      return (p < 120 || (p >= 250 && p < 370)) ? 1 : 0.15f;
+      return 0.15f + 0.85f * max(square(p, 0, 120, 40), square(p, 250, 370, 40));
     }
     case LIGHT_FLICKER: {
       // Candle-like: a few out-of-step waves, offset per pixel.
@@ -77,13 +94,19 @@ static RGB scaled(uint32_t color, float level) {
   return {toLinear(color >> 16) * level, toLinear(color >> 8) * level, toLinear(color) * level};
 }
 
-static RGB target(State state, uint32_t t, int i) {
+// The state's colour in linear light at full level, with its own brightness. Once per frame.
+// The state's own brightness dims linearly, after gamma: dimming before it leaves
+// too few steps at low levels and the hue drifts (idle turned pink).
+static RGB stateBase(State state) {
   const StateStyle &st = settings.state[state];
-  RGB c = scaled(st.color, settings.brightness / 100.0f * lightLevel(st.light, t, i));
-  // The state's own brightness dims linearly, after gamma: dimming before it leaves
-  // too few steps at low levels and the hue drifts (idle turned pink).
   float k = st.brightness / 100.0f;
-  return {c.r * k, c.g * k, c.b * k};
+  return {toLinear(st.color >> 16) * k, toLinear(st.color >> 8) * k, toLinear(st.color) * k};
+}
+
+static RGB target(const RGB &base, uint8_t light, uint32_t t, int i) {
+  float level = settings.brightness / 100.0f * lightLevel(light, t, i);
+  level *= level;  // rough gamma so fades look even to the eye
+  return {base.r * level, base.g * level, base.b * level};
 }
 
 static RGB helloColor(uint32_t elapsed, int i) {
@@ -93,19 +116,44 @@ static RGB helloColor(uint32_t elapsed, int i) {
   return scaled(c, settings.brightness / 100.0f * (1 - (float)elapsed / HELLO_MS));
 }
 
+static float fadeChannel(float a, float b, float mix) {
+  float v = sqrtf(a) + (sqrtf(b) - sqrtf(a)) * mix;
+  return v * v;
+}
+
 // Writes the frame, scaled down if it would draw more than the current budget.
 static float lastMa = 0;
 float ledsLastMa() { return lastMa; }
 
+// One channel to 8 bits. A level between two steps alternates between them from frame to frame
+// (the error is carried over), so slow fades at low brightness don't move in visible steps.
+// Below one step there is no dithering: it would flicker.
+static uint8_t dither(float v, float &err) {
+  if (v < 1) { err = 0; return v >= 0.5f ? 1 : 0; }
+  float want = v + err;
+  int out = constrain((int)(want + 0.5f), 0, 255);
+  err = constrain(want - out, -0.5f, 0.5f);
+  return out;
+}
+
 static void show(bool sound) {
+  uint32_t now = millis();
+  float dt = (float)(now - lastShowMs);
+  lastShowMs = now;
   float sum = 0;
   for (int i = 0; i < LED_COUNT; i++) sum += shown[i].r + shown[i].g + shown[i].b;
   float ma = sum / 255 * LED_MA_PER_CHANNEL;
   float budget = sound ? LED_BUDGET_SOUND_MA : LED_BUDGET_MA;
   float k = ma > budget ? budget / ma : 1;
-  lastMa = ma * k;
+  // Ease towards the cap: down within ~40 ms, back up over ~250 ms, so a sound starting or
+  // stopping dims and restores the ring smoothly instead of in one step.
+  capK += (k - capK) * min(1.0f, dt / (k < capK ? CAP_DOWN_MS : CAP_UP_MS));
+  float kk = min(capK, 1.0f);
+  if (ma * kk > budget * 1.25f) kk = budget * 1.25f / ma;  // hard limit, even while easing
+  lastMa = ma * kk;
   for (int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, (uint8_t)(shown[i].r * k), (uint8_t)(shown[i].g * k), (uint8_t)(shown[i].b * k));
+    strip.setPixelColor(i, dither(shown[i].r * kk, ditherErr[i].r), dither(shown[i].g * kk, ditherErr[i].g),
+                        dither(shown[i].b * kk, ditherErr[i].b));
   }
   strip.show();
 }
@@ -145,15 +193,18 @@ void ledsRender(State state, bool dark, bool sound) {
     lastState = state;
   }
 
-  float mix = min(1.0f, (t - changeMs) / (float)FADE_MS);
+  // Cross-fade: eased, and mixed on a perceptual scale (square root of light) so it neither
+  // jumps at the start nor crawls at the end.
+  float mix = ease((t - changeMs) / (float)FADE_MS);
+  RGB base = stateBase(state);
+  uint8_t light = settings.state[state].light;
   for (int i = 0; i < LED_COUNT; i++) {
     if (helloActive) {
       shown[i] = helloColor(t - helloStart, i);
     } else {
-      RGB to = target(state, t - changeMs, i);  // animations run from the state change
-      shown[i] = {from[i].r + (to.r - from[i].r) * mix,
-                  from[i].g + (to.g - from[i].g) * mix,
-                  from[i].b + (to.b - from[i].b) * mix};
+      RGB to = target(base, light, t - changeMs, i);  // animations run from the state change
+      shown[i] = mix >= 1 ? to : RGB{fadeChannel(from[i].r, to.r, mix), fadeChannel(from[i].g, to.g, mix),
+                                     fadeChannel(from[i].b, to.b, mix)};
     }
   }
   show(sound);

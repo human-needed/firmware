@@ -1,7 +1,7 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "2.0.1"
+#define FW_VERSION "2.0.2"
 #define PROTO_VERSION 2           // hn-usb/2, pm/contracts/usb-protocol.md
 #define USB_PRODUCT_NAME "HumanNeeded"
 #define USB_VID_HN 0x2E8A         // Raspberry Pi
@@ -41,7 +41,10 @@
 
 // ---- Behaviour constants ----
 #define HELLO_MS            1500    // hello spin length
-#define FADE_MS             600     // cross-fade between states
+#define FADE_MS             400     // cross-fade between states (eased)
+#define FRAME_MS            5       // LED frame period: 200 fps, so temporal dithering doesn't flicker
+#define CAP_DOWN_MS         40.0f   // current cap eases down this fast when a sound starts...
+#define CAP_UP_MS           250.0f  // ...and back up this slowly
 #define SAVE_DELAY_MS       2000    // settings go to flash this long after the last change
 #define WATCHDOG_MS         3000    // longer than the worst flash erase + write
 #define REPLY_TIMEOUT_MS    400     // give up sending a reply the host doesn't read
