@@ -21,6 +21,8 @@ $boards = @(
     # HN board: 2 MB flash read with the generic boot stage. freq=125 is required: at the core's
     # default 200 MHz the board cannot run from its flash and never comes up on USB.
     @{ id = 'hn-v1';         fqbn = 'rp2040:rp2040:generic:flash=2097152_0,freq=125'; flags = '' }
+    # HN-08 rev B: same chip, flash and crystal as rev A; WS2816B LEDs (16-bit).
+    @{ id = 'hn-v2';         fqbn = 'rp2040:rp2040:generic:flash=2097152_0,freq=125'; flags = '-DBOARD_HN_V2' }
 )
 # Boards no longer built. Their entries are removed from latest.json, so the settings page
 # stops offering them updates (they keep the firmware they have).

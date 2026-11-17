@@ -149,12 +149,21 @@ static int soundNorm(const SoundDef *sound) {
   return 256 / 3;
 }
 
-void audioBegin() {
-  for (int i = 0; i < (1 << SINE_BITS); i++) sine[i] = 32767 * sinf(i * 2 * PI / (1 << SINE_BITS));
+// Amp off, as early as possible: SD is driven high before the pin becomes an output, so it never
+// goes low for a moment (a pop). On rev B the board's pull-up already holds it off until here.
+void audioAmpOffEarly() {
 #ifdef AMP_SD_PIN
-  pinMode(AMP_SD_PIN, OUTPUT);
+  gpio_set_function(AMP_SD_PIN, GPIO_FUNC_SIO);
+  gpio_disable_pulls(AMP_SD_PIN);  // the RP2040's own pull-down fights the board's pull-up
+  gpio_put(AMP_SD_PIN, 1);
+  gpio_set_dir(AMP_SD_PIN, true);
 #endif
-  amp(false);  // only on while a sound plays
+  ampOn = false;
+}
+
+void audioBegin() {
+  audioAmpOffEarly();  // only on while a sound plays
+  for (int i = 0; i < (1 << SINE_BITS); i++) sine[i] = 32767 * sinf(i * 2 * PI / (1 << SINE_BITS));
 #ifdef AUDIO_PWM_PIN
   // The PWM only has F_CPU / AUDIO_PWM_HZ levels (625 at 125 MHz), so it is fed one word per
   // PWM period, AUDIO_PWM_OSR times the audio rate, and audioTick() noise-shapes the samples.

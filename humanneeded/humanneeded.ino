@@ -315,6 +315,7 @@ static void readSerial() {
 // ---- main ----
 
 void setup() {
+  audioAmpOffEarly();
   // USB identity: product "HumanNeeded", serial "HN<chip id>".
   strcpy(serialNumber, "HN");
   pico_get_unique_board_id_string(serialNumber + 2, sizeof(serialNumber) - 2);

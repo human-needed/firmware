@@ -4,6 +4,7 @@
 // Sound playback. The amp is only switched on while a sound plays. With ENABLE_AUDIO 0
 // nothing is played, but plays are still counted so they can be checked over serial (STATUS).
 
+void audioAmpOffEarly();  // first thing in setup(): amp shut down, no pop
 void audioBegin();
 void audioTick();  // feeds the audio (I2S or PWM) buffer and switches the amp; call every loop
 
