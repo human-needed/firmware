@@ -10,16 +10,29 @@
 #define USB_PID_HN 0
 
 // ---- Board ----
-// The only supported board is the HN-08 (rev A, BOARD_ID "hn-v1"). Prototype 0 (KB2040) and the
-// older test boards are no longer supported (D-053).
+// HN-08 rev A ("hn-v1", the default build) and rev B ("hn-v2", build with -DBOARD_HN_V2).
+// Same pins on both. Prototype 0 (KB2040) and the older test boards are no longer supported (D-053).
+#ifdef BOARD_HN_V2
+// Rev B (D-057): 16 x WS2816B, 16 bits per channel (48 bits per LED, GRB), 20 mA per LED at full
+// white; amp SD pulled up on the board (amp off until GPIO5 goes low).
+#define BOARD_ID      "hn-v2"
+#define LED_16BIT     1
+#define LED_MA_PER_CHANNEL 6.7f  // 20 mA per LED / 3 (datasheet max; measure on the pilot boards)
+// The firmware sends linear light (gamma is done here, in leds.cpp). If the WS2816B's built-in
+// gamma turns out to map its 16-bit input through a curve, set this to undo it: the output is
+// light^(1/LED_OUT_GAMMA). 1 = the chip is linear. Check on the pilot boards (see README).
+#define LED_OUT_GAMMA 1.0f
+#else
 #define BOARD_ID      "hn-v1"
+#define LED_16BIT     0
+#endif
 #define LED_PIN       28     // ring data, buffered to 5 V; chain runs clockwise from LED16
 #define LED_COUNT     16
 #define AUDIO_PWM_PIN 4      // PWM audio -> RC filter -> 8002A amp (no I2S on this board)
 #define AUDIO_PWM_HZ  200000 // PWM carrier; the board's RC filter is set for it
 #define AUDIO_PWM_OSR 8      // PWM periods per audio sample (see audioTick)
 #define AUDIO_RATE    25000  // AUDIO_PWM_HZ / AUDIO_PWM_OSR, so samples and PWM periods line up
-#define AMP_SD_PIN    5      // amp shutdown, high = off (pulled low on the board)
+#define AMP_SD_PIN    5      // amp shutdown, high = off (rev A: pulled low; rev B: pulled up)
 #define ENABLE_AUDIO  1
 #define AUDIO_NORMALIZE 1    // amp gain is only 2: use the full PWM swing for every sound
 

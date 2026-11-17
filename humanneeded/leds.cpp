@@ -5,9 +5,15 @@
 
 struct RGB { float r, g, b; };
 
+#if LED_16BIT
+// WS2816: 6 bytes per LED (G, R, B, each 16 bits, high byte first) on the same 800 kHz wire.
+// Driven as twice as many 3-byte pixels whose bytes are written raw (see show()).
+static Adafruit_NeoPixel strip(LED_COUNT * 2, LED_PIN, NEO_RGB + NEO_KHZ800);
+#else
 static Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+#endif
 static RGB shown[LED_COUNT];  // what is on the LEDs now (linear light, 0-255 per channel, before the cap)
-static RGB ditherErr[LED_COUNT];  // rounding error carried to the next frame (temporal dithering)
+[[maybe_unused]] static RGB ditherErr[LED_COUNT];  // rounding error carried to the next frame (temporal dithering)
 static float capK = 1;            // current-cap scale, eased so a sound starting doesn't jump the light
 static uint32_t lastShowMs = 0;
 static RGB from[LED_COUNT];   // snapshot at the last state change, for cross-fading
@@ -128,13 +134,30 @@ float ledsLastMa() { return lastMa; }
 // One channel to 8 bits. A level between two steps alternates between them from frame to frame
 // (the error is carried over), so slow fades at low brightness don't move in visible steps.
 // Below one step there is no dithering: it would flicker.
-static uint8_t dither(float v, float &err) {
+[[maybe_unused]] static uint8_t dither(float v, float &err) {
   if (v < 1) { err = 0; return v >= 0.5f ? 1 : 0; }
   float want = v + err;
   int out = constrain((int)(want + 0.5f), 0, 255);
   err = constrain(want - out, -0.5f, 0.5f);
   return out;
 }
+
+#if LED_16BIT
+// One channel (linear, 0-255 float) to 16 bits. 257 x finer than 8 bits: no dithering needed.
+static uint16_t to16(float v) {
+  if (v <= 0) return 0;
+#if defined(LED_OUT_GAMMA)
+  if (LED_OUT_GAMMA != 1.0f) v = 255 * powf(v / 255, 1 / LED_OUT_GAMMA);
+#endif
+  float o = v * 257 + 0.5f;
+  return o >= 65535 ? 65535 : (uint16_t)o;
+}
+
+static void put16(uint8_t *p, uint16_t v) {
+  p[0] = v >> 8;
+  p[1] = v & 0xFF;
+}
+#endif
 
 static void show(bool sound) {
   uint32_t now = millis();
@@ -151,10 +174,19 @@ static void show(bool sound) {
   float kk = min(capK, 1.0f);
   if (ma * kk > budget * 1.25f) kk = budget * 1.25f / ma;  // hard limit, even while easing
   lastMa = ma * kk;
+#if LED_16BIT
+  uint8_t *px = strip.getPixels();  // raw bytes, sent as they are (no setBrightness)
+  for (int i = 0; i < LED_COUNT; i++) {
+    put16(px + 6 * i, to16(shown[i].g * kk));
+    put16(px + 6 * i + 2, to16(shown[i].r * kk));
+    put16(px + 6 * i + 4, to16(shown[i].b * kk));
+  }
+#else
   for (int i = 0; i < LED_COUNT; i++) {
     strip.setPixelColor(i, dither(shown[i].r * kk, ditherErr[i].r), dither(shown[i].g * kk, ditherErr[i].g),
                         dither(shown[i].b * kk, ditherErr[i].b));
   }
+#endif
   strip.show();
 }
 

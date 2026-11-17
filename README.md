@@ -34,6 +34,14 @@ arduino-cli compile --fqbn "rp2040:rp2040:generic:flash=2097152_0,freq=125" --ou
 `freq=125` is required: at the core's default 200 MHz the board can't run from its flash and
 never comes up on USB.
 
+That builds the HN-08 rev A (`hn-v1`). For rev B (`hn-v2`: WS2816B 16-bit LEDs, amp SD pulled up),
+add `--build-property "compiler.cpp.extra_flags=-DBOARD_HN_V2"`. Same pins, same FQBN.
+
+**To check on the first rev B boards:** the WS2816B's built-in gamma. The firmware sends linear
+light (`LED_OUT_GAMMA 1.0f` in `config.h`). Run a slow breathe at low brightness: if the dim end
+looks crushed (too dark for too long, then a jump), the chip applies its own curve; set
+`LED_OUT_GAMMA` to that curve's exponent (e.g. `2.2f`) so it isn't applied twice.
+
 Firmware 2.0 has no 1200-baud reset, so `arduino-cli upload -p COMx` can't restart it. Send
 `BOOTSEL` on the puck's port (or hold the button / BOOT pad while plugging it in): a drive called
 `RPI-RP2` appears; copy `build/humanneeded.ino.uf2` onto it.
@@ -118,6 +126,6 @@ Bump `FW_VERSION` in `humanneeded/config.h`, then from `main`:
 powershell -ExecutionPolicy Bypass -File release.ps1
 ```
 
-It builds a UF2 for every board (the HumanNeeded board and prototype 0), publishes them as one GitHub
+It builds a UF2 for every board (`hn-v1` and `hn-v2`), publishes them as one GitHub
 release, and updates `latest.json` in the website repo,
 which is what the settings page checks. Push the website repo to offer the update.
