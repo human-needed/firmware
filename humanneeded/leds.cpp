@@ -71,7 +71,6 @@ static float lightLevel(uint8_t light, uint32_t t, int i) {
   switch (light) {
     case LIGHT_OFF:     return 0;
     case LIGHT_BREATHE: return 0.35f + 0.65f * wave(t);  // floor keeps the hue true
-    case LIGHT_PULSE:   return 0.2f + 0.8f * wave(t);
     case LIGHT_BLINK:   return 1 - square(t % ANIM_MS, 220, 720, 60);  // off half a second, soft edges
     case LIGHT_HEARTBEAT: {
       // Two quick beats, then a rest. The first beat spans the join between cycles.

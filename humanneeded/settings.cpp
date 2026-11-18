@@ -17,8 +17,8 @@ void settingsDefaults(Settings &s) {
   s.brightness = 60;
   s.volume = 70;
   //                         colour    light            bright  secs  sound
-  setStyle(s, ST_NEEDS,   0xFFA62B, LIGHT_PULSE,     100,    0,    SOUND_CALL);
-  setStyle(s, ST_DONE,    0x22E04A, LIGHT_PULSE,     100,    3,    SOUND_BRIGHT);
+  setStyle(s, ST_NEEDS,   0xFFA62B, LIGHT_BREATHE,   100,    0,    SOUND_CALL);
+  setStyle(s, ST_DONE,    0x22E04A, LIGHT_BREATHE,   100,    3,    SOUND_BRIGHT);
   setStyle(s, ST_WORKING, 0x3366FF, LED_COUNT >= 3 ? LIGHT_SPIN : LIGHT_BREATHE, 100, 0, SOUND_NONE);
   setStyle(s, ST_IDLE,    0xFFD2A0, LIGHT_SOLID,     20,     0,    SOUND_NONE);
 }
@@ -37,6 +37,7 @@ bool settingsClamp(Settings &s) {
     StateStyle &st = s.state[i];
     clampField<uint32_t>(st.color, 0, 0xFFFFFF, changed);
     clampField<uint8_t>(st.light, 0, LIGHT_COUNT - 1, changed);
+    if (st.light == LIGHT_RETIRED_PULSE) { st.light = LIGHT_BREATHE; changed = true; }
     clampField<uint8_t>(st.brightness, 0, 100, changed);
     clampField<uint16_t>(st.duration, i == ST_DONE ? 1 : 0, 3600, changed);
     clampField<uint8_t>(st.sound, 0, i == ST_IDLE ? SOUND_NONE : SOUND_COUNT - 1, changed);
@@ -54,9 +55,14 @@ void settingsUpdated() {
 
 static int findName(const char *const *names, int count, const char *value) {
   for (int i = 0; i < count; i++) {
-    if (strcasecmp(value, names[i]) == 0) return i;
+    if (names[i] && strcasecmp(value, names[i]) == 0) return i;  // a retired entry has no name
   }
   return -1;
+}
+
+static int findLight(const char *value) {
+  if (strcasecmp(value, "pulse") == 0) return LIGHT_BREATHE;  // retired; older apps still send it
+  return findName(LIGHT_NAMES, LIGHT_COUNT, value);
 }
 
 static bool hasSound(int state) { return state != ST_IDLE; }
@@ -68,7 +74,7 @@ static bool setStateKey(int state, const char *name, const char *value) {
   int i;
   bool snd = hasSound(state);
   if (!strcasecmp(name, "color") && parseColor(value, n))                                 st.color = n;
-  else if (!strcasecmp(name, "light") && (i = findName(LIGHT_NAMES, LIGHT_COUNT, value)) >= 0) st.light = i;
+  else if (!strcasecmp(name, "light") && (i = findLight(value)) >= 0) st.light = i;
   else if (!strcasecmp(name, "brightness") && parseUint(value, 0, 100, n))                st.brightness = n;
   else if (!strcasecmp(name, "duration") && parseUint(value, state == ST_DONE ? 1 : 0, 3600, n)) st.duration = n;
   else if (snd && !strcasecmp(name, "sound") && (i = findName(SOUND_NAMES, SOUND_COUNT, value)) >= 0) st.sound = i;
@@ -137,8 +143,11 @@ bool settingsGetJson(const char *key, Buf &out) {
 // Option list: [[value,label],...]
 static void jsonOptions(Buf &out, const char *const *values, const char *const *labels, int count) {
   out.addc('[');
+  bool first = true;
   for (int i = 0; i < count; i++) {
-    if (i) out.addc(',');
+    if (!values[i]) continue;  // retired
+    if (!first) out.addc(',');
+    first = false;
     out.addc('[');
     out.str(values[i]);
     out.addc(',');

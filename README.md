@@ -86,7 +86,7 @@ The full contract lives in the project's PM hub (`pm/contracts/usb-protocol.md`)
   (`pip install pyserial`, then `python test/hil_test.py`; `--bootsel <uf2>` also tests an update).
 
 Settings (the full list, with labels, is what `SCHEMA` returns): global `brightness` and `volume` (0-100), plus per state (`needs`, `done`, `working`, `idle`)
-`<state>.color` `#RRGGBB`, `.light` `off|solid|breathe|pulse|blink|heartbeat|flicker|spin`,
+`<state>.color` `#RRGGBB`, `.light` `off|solid|breathe|blink|heartbeat|flicker|spin`,
 `.brightness` 0-100, `.duration` seconds 0-3600 (0 = as long as the state lasts; `done` 1-3600),
 `.sound` `none|ding|chime|rising|arpeggio|bell|beeps|bloop|bright|clock|doorbell|fanfare|ripple|call|lullaby|harp`, `.volume` 0-100, `.repeat` 1-5
 (idle has no sound settings). Stored with a CRC and clamped on load; 0.3.0 settings are migrated.
