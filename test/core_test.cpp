@@ -124,6 +124,22 @@ static void testEngine() {
   CHECK(h.shown(21999) == ST_NEEDS && h.shown(22000) == ST_WORKING);
   dur[ST_NEEDS] = 0;
 
+  // shownSince: when what's shown started (light animations are timed from it)
+  Engine s;
+  s.dur = dur;
+  CHECK(s.shownSince(5) == 0);
+  s.applySnap(mk(600, {{"0000000a", ST_WORKING}}), 100);
+  CHECK(s.shownSince(100) == 100);
+  s.applySnap(mk(600, {{"0000000a", ST_WORKING}, {"0000000b", ST_NEEDS}}), 200);
+  CHECK(s.shownSince(200) == 200);
+  s.applySnap(mk(600, {{"0000000a", ST_WORKING}, {"0000000c", ST_NEEDS}}), 300);
+  CHECK(s.shownSince(300) == 300);  // a new id starts needs again
+  s.flashDone(400, 3);
+  CHECK(s.shownSince(400) == 400);
+  s.startTest(ST_DONE, 500);
+  s.startTest(ST_DONE, 600);
+  CHECK(s.shownSince(600) == 600);  // a second preview starts again
+
   // TEST: shown over everything, for the state's full duration (contract 1.3)
   Engine t;
   t.dur = dur;

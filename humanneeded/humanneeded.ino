@@ -375,7 +375,7 @@ void loop() {
   if (millis() - lastFrame >= FRAME_MS) {
     uint32_t gap = millis() - lastFrame, us = micros();
     lastFrame = millis();
-    ledsRender(engine.shown(millis()), suspended, audioPlaying());
+    ledsRender(engine.shown(millis()), engine.shownSince(millis()), suspended, audioPlaying());
     us = micros() - us;
     if (gap > frameGapMaxMs) frameGapMaxMs = gap;
     if (us > frameUsMax) frameUsMax = us;

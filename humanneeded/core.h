@@ -74,7 +74,7 @@ struct Engine {
   bool doneOn = false;                      // FLASH done light
   uint32_t doneSince = 0, doneEnd = 0;
   int testState = -1;                       // TEST preview, or -1
-  uint32_t testEnd = 0;
+  uint32_t testEnd = 0, testSince = 0;
   int testBase = -1;                        // what was shown under the preview when it began
   const uint16_t *dur = nullptr;            // per-state duration in seconds (settings), 0 = no limit
 
@@ -91,6 +91,9 @@ struct Engine {
 
   State base(uint32_t now) const;   // shown state without the TEST preview
   State shown(uint32_t now) const;  // what the ring shows
+  // When what's shown started (0 for idle, which has no start). Durations run from here, and
+  // so do the light animations, so a whole number of cycles fits any duration.
+  uint32_t shownSince(uint32_t now) const;
   uint32_t leaseLeftS(uint32_t now) const;
 
  private:

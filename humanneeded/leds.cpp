@@ -18,6 +18,7 @@ static float capK = 1;            // current-cap scale, eased so a sound startin
 static uint32_t lastShowMs = 0;
 static RGB from[LED_COUNT];   // snapshot at the last state change, for cross-fading
 static int lastState = -1;
+static uint32_t lastSince = 0;
 static uint32_t changeMs = 0;
 static uint32_t helloStart = 0;
 static bool helloActive = false;
@@ -48,9 +49,10 @@ static float ease(float x) {
   return x * x * (3 - 2 * x);
 }
 
-// 0..1 wave with the given period: 1 at t=0 (so a new state starts bright), 0 at half period.
-static float wave(uint32_t t, uint32_t periodMs) {
-  return 0.5f + 0.5f * cosf(2 * PI * (t % periodMs) / periodMs);
+// 0..1 wave over one animation cycle: 0 at the start and end, 1 halfway. Cycles start and end
+// dim, so the fade-in doesn't eat into the first one and the last runs out into the next state.
+static float wave(uint32_t t) {
+  return 0.5f - 0.5f * cosf(2 * PI * (t % ANIM_MS) / ANIM_MS);
 }
 
 // 1 between on and off (ms), 0 outside, with eased edges `edge` ms long instead of a hard step.
@@ -61,27 +63,29 @@ static float square(uint32_t p, uint32_t on, uint32_t off, uint32_t edge) {
   return 1 - ease((p - off) / (float)edge);
 }
 
-// Light level (0..1) for pixel i, t ms after the state began.
+// Light level (0..1) for pixel i, t ms after the state began. Every animation repeats exactly
+// every ANIM_MS, and durations are whole seconds, so a state always ends on a complete cycle.
 static float lightLevel(uint8_t light, uint32_t t, int i) {
   if (light == LIGHT_SPIN && LED_COUNT < 3) light = LIGHT_BREATHE;  // no spin on a single pixel
   switch (light) {
     case LIGHT_OFF:     return 0;
-    case LIGHT_BREATHE: return 0.35f + 0.65f * wave(t, 4000);  // floor keeps the hue true
-    case LIGHT_PULSE:   return 0.2f + 0.8f * wave(t, 1400);
-    case LIGHT_BLINK:   return square(t % 1000, 0, 500, 60);  // on half a second, soft edges
+    case LIGHT_BREATHE: return 0.35f + 0.65f * wave(t);  // floor keeps the hue true
+    case LIGHT_PULSE:   return 0.2f + 0.8f * wave(t);
+    case LIGHT_BLINK:   return square(t % ANIM_MS, 100, 600, 60);  // on half a second, soft edges
     case LIGHT_HEARTBEAT: {
-      // Two quick beats, then a rest, every 1.2 s.
-      uint32_t p = t % 1200;
-      return 0.15f + 0.85f * max(square(p, 0, 120, 40), square(p, 250, 370, 40));
+      // Two quick beats, then a rest.
+      uint32_t p = t % ANIM_MS;
+      return 0.15f + 0.85f * max(square(p, 150, 250, 33), square(p, 360, 460, 33));
     }
     case LIGHT_FLICKER: {
-      // Candle-like: a few out-of-step waves, offset per pixel.
-      float f = sinf(t * 0.013f + i) * sinf(t * 0.0071f + 2 * i) + 0.5f * sinf(t * 0.031f + 3 * i);
+      // Candle-like: a few out-of-step waves, offset per pixel (whole numbers of them per cycle).
+      float a = 2 * PI * (t % ANIM_MS) / ANIM_MS;
+      float f = sinf(2 * a + i) * sinf(a + 2 * i) + 0.5f * sinf(5 * a + 3 * i);
       return constrain(0.7f + 0.25f * f, 0.3f, 1.0f);
     }
     case LIGHT_SPIN: {
-      // A comet tail chasing around the ring once every 1.5 s.
-      float head = (t % 1500) * LED_COUNT / 1500.0f;
+      // A comet tail chasing around the ring once per cycle.
+      float head = (t % ANIM_MS) * LED_COUNT / (float)ANIM_MS;
       float behind = fmodf(head - i + LED_COUNT, LED_COUNT);
       return 0.1f + 0.9f * max(0.0f, 1 - behind / (LED_COUNT * 0.5f));
     }
@@ -190,7 +194,7 @@ static void show(bool sound) {
   strip.show();
 }
 
-void ledsRender(State state, bool dark, bool sound) {
+void ledsRender(State state, uint32_t since, bool dark, bool sound) {
   uint32_t t = millis();
 
   if (dark) {  // USB suspend: fully dark; fade back in on resume
@@ -219,22 +223,26 @@ void ledsRender(State state, bool dark, bool sound) {
     helloActive = false;
     lastState = -1;  // fade in from the end of the hello
   }
-  if (!helloActive && state != lastState) {
+  // A new state, or the same one starting again (a new agent needs you, a second preview).
+  if (!helloActive && (state != lastState || since != lastSince)) {
     memcpy(from, shown, sizeof(from));
     changeMs = t;
     lastState = state;
+    lastSince = since;
   }
 
   // Cross-fade: eased, and mixed on a perceptual scale (square root of light) so it neither
   // jumps at the start nor crawls at the end.
-  float mix = ease((t - changeMs) / (float)FADE_MS);
   RGB base = stateBase(state);
   uint8_t light = settings.state[state].light;
+  bool animated = light != LIGHT_OFF && light != LIGHT_SOLID;
+  float mix = ease((t - changeMs) / (float)(animated ? ANIM_FADE_MS : FADE_MS));
+  uint32_t start = since ? since : changeMs;  // animations run from when the state started
   for (int i = 0; i < LED_COUNT; i++) {
     if (helloActive) {
       shown[i] = helloColor(t - helloStart, i);
     } else {
-      RGB to = target(base, light, t - changeMs, i);  // animations run from the state change
+      RGB to = target(base, light, t - start, i);
       shown[i] = mix >= 1 ? to : RGB{fadeChannel(from[i].r, to.r, mix), fadeChannel(from[i].g, to.g, mix),
                                      fadeChannel(from[i].b, to.b, mix)};
     }

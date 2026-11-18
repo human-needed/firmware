@@ -166,6 +166,16 @@ State Engine::shown(uint32_t now) const {
   return testState >= 0 ? (State)testState : base(now);
 }
 
+uint32_t Engine::shownSince(uint32_t now) const {
+  if (testState >= 0) return testSince;
+  switch (base(now)) {
+    case ST_DONE: return doneSince;
+    case ST_NEEDS: return needsSince;
+    case ST_WORKING: return workingSince;
+    default: return 0;
+  }
+}
+
 uint32_t Engine::leaseLeftS(uint32_t now) const {
   if (!leased || timeReached(now, leaseEnd)) return 0;
   return (leaseEnd - now + 999) / 1000;
@@ -217,6 +227,7 @@ void Engine::startTest(int state, uint32_t now) {
   uint32_t ms = d == 0 ? TEST_UNTIL_CLEARED_MS : d * 1000UL;  // contract 1.3 (D-060)
   testState = state;
   testEnd = now + ms;
+  testSince = now;
   testBase = base(now);
 }
 
