@@ -301,6 +301,8 @@ def test_mute(p):
 def test_settings(p):
     check("SET needs.color", p.cmd("SET needs.color #123456") == "OK")
     check("GET needs.color", p.json("GET needs.color") == {"needs.color": "#123456"})
+    check("SET light pulse (older apps) -> OK", p.cmd("SET needs.light pulse") == "OK")
+    check("pulse becomes breathe", p.json("GET needs.light") == {"needs.light": "breathe"})
     for bad in ("SET needs.color 123456", "SET needs.color #12345G", "SET brightness 101", "SET brightness -1",
                 "SET done.duration 0", "SET needs.duration 3601", "SET idle.sound ding", "SET needs.sound nope",
                 "SET needs.repeat 6", "SET nope 1", "SET brightness", "SET"):

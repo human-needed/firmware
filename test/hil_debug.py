@@ -63,7 +63,7 @@ def test_current_cap(p):
 
 def test_frames(p):
     """Smooth light: frames every 5 ms (200 fps), none late, each cheap to draw."""
-    for snap, what in (("SNAP 30 00000006:working", "spin"), ("SNAP 30 00000006:needs", "pulse + sound")):
+    for snap, what in (("SNAP 30 00000006:working", "spin"), ("SNAP 30 00000006:needs", "breathe + sound")):
         p.cmd(snap)
         dbg(p)  # resets the counters
         time.sleep(3)

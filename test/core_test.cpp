@@ -220,6 +220,16 @@ static void testSettings() {
   CHECK(!settingsSet("needs.repeat", "0") && !settingsSet("needs.repeat", "6"));
   CHECK(!settingsSet("averyveryverylongstate.color", "#000000"));
 
+  // Pulse is gone: defaults are Breathe, older apps' `pulse` becomes Breathe, numbers don't move
+  Settings defaults;
+  settingsDefaults(defaults);
+  CHECK(defaults.state[ST_NEEDS].light == LIGHT_BREATHE && defaults.state[ST_DONE].light == LIGHT_BREATHE);
+  CHECK(LIGHT_BREATHE == 2 && LIGHT_BLINK == 4 && LIGHT_HEARTBEAT == 5 && LIGHT_FLICKER == 6 && LIGHT_SPIN == 7);
+  CHECK(settingsSet("needs.light", "blink") && settings.state[ST_NEEDS].light == LIGHT_BLINK);
+  CHECK(settingsSet("needs.light", "PULSE") && settings.state[ST_NEEDS].light == LIGHT_BREATHE);
+  CHECK(settingsSet("done.light", "spin") && settings.state[ST_DONE].light == LIGHT_SPIN);
+  CHECK(settingsSet("done.light", "breathe") && !settingsSet("done.light", "nope"));
+
   static char mem[8192];
   Buf b(mem, sizeof(mem));
   CHECK(settingsGetJson("needs.color", b) && !strcmp(b.p, "{\"needs.color\":\"#112233\"}"));
@@ -230,6 +240,7 @@ static void testSettings() {
   b.clear();
   settingsSchema(b, true);
   CHECK(!b.overflow && b.len > 1000 && strstr(b.p, "\"done_duration\"") && strstr(b.p, "1 second"));
+  CHECK(!strstr(b.p, "ulse") && strstr(b.p, "[\"breathe\",\"Breathe\"],[\"blink\",\"Blink\"]"));
   printf("SCHEMA is %u bytes\n", (unsigned)b.len);
 
   // stored format: round trip, CRC, clamp, 0.3.0 migration
@@ -239,6 +250,15 @@ static void testSettings() {
   CHECK(settingsDecode(raw, sizeof(raw), back) && !memcmp(&back, &settings, sizeof(back)));
   raw[10] ^= 1;
   CHECK(!settingsDecode(raw, sizeof(raw), back));
+  // a saved Pulse (number 3) loads as Breathe; its neighbours stay what they were
+  Settings old = settings;
+  old.state[ST_NEEDS].light = 3;
+  old.state[ST_DONE].light = LIGHT_BLINK;
+  old.state[ST_WORKING].light = LIGHT_SPIN;
+  uint8_t rawOld[SETTINGS_STORE_SIZE] = {};
+  settingsEncode(old, rawOld);
+  CHECK(settingsDecode(rawOld, sizeof(rawOld), back) && back.state[ST_NEEDS].light == LIGHT_BREATHE &&
+        back.state[ST_DONE].light == LIGHT_BLINK && back.state[ST_WORKING].light == LIGHT_SPIN);
   uint8_t blank[SETTINGS_STORE_SIZE];
   memset(blank, 0xFF, sizeof(blank));
   CHECK(!settingsDecode(blank, sizeof(blank), back));
@@ -262,11 +282,12 @@ static void testSettings() {
   v3.magic = 0x484E0003;
   v3.b = 42;
   v3.v = 33;
-  v3.st[ST_DONE] = {0x22E04A, LIGHT_PULSE, 100, 0, SOUND_BRIGHT, 100, 1};
+  v3.st[ST_DONE] = {0x22E04A, 3, 100, 0, SOUND_BRIGHT, 100, 1};  // 3 was Pulse
   uint8_t raw3[SETTINGS_STORE_SIZE] = {};
   memcpy(raw3, &v3, sizeof(v3));
   CHECK(settingsDecode(raw3, sizeof(raw3), back) && back.brightness == 42 && back.volume == 33 &&
-        back.state[ST_DONE].duration == 1 && back.state[ST_DONE].sound == SOUND_BRIGHT);
+        back.state[ST_DONE].duration == 1 && back.state[ST_DONE].sound == SOUND_BRIGHT &&
+        back.state[ST_DONE].light == LIGHT_BREATHE);
 }
 
 int main() {

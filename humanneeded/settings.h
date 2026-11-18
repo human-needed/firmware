@@ -5,16 +5,18 @@
 #include "core.h"
 
 // Light modes and sounds, by the names used in the serial protocol.
+// Saved settings store the number, so numbers never change. 3 was Pulse: it has no name now, and
+// a saved 3 (or `SET <state>.light pulse` from an older app) becomes Breathe.
 enum Light : uint8_t {
-  LIGHT_OFF, LIGHT_SOLID, LIGHT_BREATHE, LIGHT_PULSE, LIGHT_BLINK,
-  LIGHT_HEARTBEAT, LIGHT_FLICKER, LIGHT_SPIN, LIGHT_COUNT
+  LIGHT_OFF = 0, LIGHT_SOLID = 1, LIGHT_BREATHE = 2, LIGHT_RETIRED_PULSE = 3, LIGHT_BLINK = 4,
+  LIGHT_HEARTBEAT = 5, LIGHT_FLICKER = 6, LIGHT_SPIN = 7, LIGHT_COUNT = 8
 };
 static const char *const LIGHT_NAMES[LIGHT_COUNT] = {
-  "off", "solid", "breathe", "pulse", "blink", "heartbeat", "flicker", "spin"
+  "off", "solid", "breathe", nullptr, "blink", "heartbeat", "flicker", "spin"
 };
 // What the settings form shows for each (sent with SCHEMA).
 static const char *const LIGHT_LABELS[LIGHT_COUNT] = {
-  "Off", "Solid", "Breathe (slow)", "Pulse", "Blink", "Heartbeat", "Candle flicker", "Spin (LED ring)"
+  "Off", "Solid", "Breathe", nullptr, "Blink", "Heartbeat", "Candle flicker", "Spin (LED ring)"
 };
 
 enum Sound : uint8_t {
