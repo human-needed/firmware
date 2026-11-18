@@ -124,6 +124,25 @@ static void testEngine() {
   CHECK(h.shown(21999) == ST_NEEDS && h.shown(22000) == ST_WORKING);
   dur[ST_NEEDS] = 0;
 
+  // the light's fade-in comes on top of every limited duration
+  dur[ST_NEEDS] = 3;
+  Engine f;
+  f.dur = dur;
+  f.leadMs = LIGHT_FADE_MS;
+  f.startTest(ST_NEEDS, 0);
+  f.tick(3249);
+  CHECK(f.shown(3249) == ST_NEEDS);
+  f.tick(3250);
+  CHECK(f.shown(3250) == ST_IDLE);
+  f.flashDone(4000, 2);
+  f.tick(6249);
+  CHECK(f.shown(6249) == ST_DONE);
+  f.tick(6250);
+  CHECK(f.shown(6250) == ST_IDLE);
+  f.applySnap(mk(600, {{"0000000a", ST_NEEDS}}), 7000);
+  CHECK(f.shown(10249) == ST_NEEDS && f.shown(10250) == ST_IDLE);
+  dur[ST_NEEDS] = 0;
+
   // shownSince: when what's shown started (light animations are timed from it)
   Engine s;
   s.dur = dur;
@@ -210,7 +229,7 @@ static void testSettings() {
   CHECK(settingsGetJson("all", b) && strstr(b.p, "\"done.duration\":1") && !strstr(b.p, "idle.sound"));
   b.clear();
   settingsSchema(b, true);
-  CHECK(!b.overflow && b.len > 1000 && strstr(b.p, "\"done_duration\""));
+  CHECK(!b.overflow && b.len > 1000 && strstr(b.p, "\"done_duration\"") && strstr(b.p, "1 second"));
   printf("SCHEMA is %u bytes\n", (unsigned)b.len);
 
   // stored format: round trip, CRC, clamp, 0.3.0 migration

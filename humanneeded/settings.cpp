@@ -201,8 +201,9 @@ static void jsonField(Buf &out, const char *key, const Field &f, const char *opt
 }
 
 void settingsSchema(Buf &out, bool audio) {
-  static const char *const DURATION_VALUES[] = {"0", "3", "5", "10", "30", "60", "300", "600"};
-  static const char *const DURATION_LABELS[] = {"As long as the state lasts", "3 seconds", "5 seconds",
+  static const char *const DURATION_VALUES[] = {"0", "1", "2", "3", "5", "10", "30", "60", "300", "600"};
+  static const char *const DURATION_LABELS[] = {"As long as the state lasts", "1 second", "2 seconds",
+                                                "3 seconds", "5 seconds",
                                                 "10 seconds", "30 seconds", "1 minute", "5 minutes", "10 minutes"};
   static const char *const REPEAT_VALUES[] = {"1", "2", "3", "4", "5"};
   static const char *const REPEAT_LABELS[] = {"Once", "2 times", "3 times", "4 times", "5 times"};
@@ -212,9 +213,9 @@ void settingsSchema(Buf &out, bool audio) {
   out.add(",\"sound\":");
   jsonOptions(out, SOUND_NAMES, SOUND_LABELS, SOUND_COUNT);
   out.add(",\"duration\":");
-  jsonOptions(out, DURATION_VALUES, DURATION_LABELS, 8);
+  jsonOptions(out, DURATION_VALUES, DURATION_LABELS, 10);
   out.add(",\"done_duration\":");  // done always ends: no "as long as it lasts"
-  jsonOptions(out, DURATION_VALUES + 1, DURATION_LABELS + 1, 7);
+  jsonOptions(out, DURATION_VALUES + 1, DURATION_LABELS + 1, 9);
   out.add(",\"repeat\":");
   jsonOptions(out, REPEAT_VALUES, REPEAT_LABELS, 5);
 

@@ -256,7 +256,7 @@ def test_flash(p, done_sound):
     check("FLASH done shows over needs", st.get("shown") == "done", st)
     check("FLASH done plays the done sound", st.get("sounds") == n0 + 1 and (done_sound == "none" or st.get("last_sound") == done_sound), st)
     check("FLASH is not stored in the table", st.get("entries") == [{"id": "0000000c", "state": "needs"}], st)
-    time.sleep(2.3)
+    time.sleep(2.5)
     check("done light ends after done.duration", status(p).get("shown") == "needs")
     p.cmd("SNAP 30")
 
@@ -276,7 +276,7 @@ def test_test(p):
     p.cmd("TEST working")
     p.cmd("FLASH done")
     check("FLASH done ends the preview", status(p).get("shown") == "done")
-    time.sleep(2.3)
+    time.sleep(2.5)
     p.cmd("SET working.duration 12")
     p.cmd("TEST working")
     time.sleep(11.5)
