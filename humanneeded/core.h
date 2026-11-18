@@ -10,7 +10,7 @@
 #define SNAP_MAX_ENTRIES 32
 #define LEASE_MIN_S      5
 #define LEASE_MAX_S      600
-#define TEST_MAX_MS      10000
+#define TEST_UNTIL_CLEARED_MS 60000  // TEST of a state with duration 0 (as long as it lasts)
 
 // ---- Reply buffer: everything is built here, then sent in chunks. ----
 struct Buf {
@@ -82,7 +82,7 @@ struct Engine {
   int applySnap(const Snap &s, uint32_t now);
   // FLASH done: the done light for doneSeconds (at least 1).
   int flashDone(uint32_t now, uint16_t doneSeconds);
-  // TEST <state>: preview for the state's duration, capped at TEST_MAX_MS.
+  // TEST <state>: preview for the state's full duration; duration 0 previews TEST_UNTIL_CLEARED_MS.
   void startTest(int state, uint32_t now);
   // Lease, FLASH and TEST timeouts. Call often.
   int tick(uint32_t now);

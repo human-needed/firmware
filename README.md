@@ -66,7 +66,7 @@ after each USB connect (when the host opens the port), so the app re-sends its s
 | `SET <key> <value>` / `GET <key\|all>` / `RESET` | settings; saved to flash 2 s after the last change, only if changed |
 | `SCHEMA` | every setting with its type, options and help text, as one line of JSON |
 | `MUTE <0-1440\|on>` | silence sound: 0 = unmute, minutes, or until turned off |
-| `TEST <needs\|done\|working\|idle\|hello>` | preview a state as configured, max 10 s, ended by any real change |
+| `TEST <needs\|done\|working\|idle\|hello>` | preview a state for its full duration (duration 0: 60 s), ended by any real change |
 | `STATUS` | `{"proto":2,"lease_left":s,"shown":..,"muted":..,"entries":[..],"sounds":n,"last_sound":..,"saves":n}` |
 | `SELFTEST` | factory test: replies serial and button state, then each LED R/G/B and a speaker sweep |
 | `BOOTSEL` / `REBOOT` | restart into the UF2 bootloader / restart (settings kept) |

@@ -214,7 +214,7 @@ int Engine::flashDone(uint32_t now, uint16_t doneSeconds) {
 
 void Engine::startTest(int state, uint32_t now) {
   uint32_t d = dur ? dur[state] : 0;
-  uint32_t ms = (d == 0 || d * 1000UL > TEST_MAX_MS) ? TEST_MAX_MS : d * 1000UL;
+  uint32_t ms = d == 0 ? TEST_UNTIL_CLEARED_MS : d * 1000UL;  // contract 1.3 (D-060)
   testState = state;
   testEnd = now + ms;
   testBase = base(now);

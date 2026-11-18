@@ -124,20 +124,29 @@ static void testEngine() {
   CHECK(h.shown(21999) == ST_NEEDS && h.shown(22000) == ST_WORKING);
   dur[ST_NEEDS] = 0;
 
-  // TEST: shown over everything, max 10 s
+  // TEST: shown over everything, for the state's full duration (contract 1.3)
   Engine t;
   t.dur = dur;
-  t.startTest(ST_NEEDS, 0);  // needs duration 0 -> capped at 10 s
+  t.startTest(ST_NEEDS, 0);  // needs duration 0 -> 60 s
   CHECK(t.shown(0) == ST_NEEDS);
-  t.tick(9999);
-  CHECK(t.shown(9999) == ST_NEEDS);
-  t.tick(10000);
-  CHECK(t.shown(10000) == ST_IDLE);
-  t.startTest(ST_DONE, 20000);  // done duration 3 s
-  t.tick(22999);
-  CHECK(t.shown(22999) == ST_DONE);
-  t.tick(23000);
-  CHECK(t.shown(23000) == ST_IDLE);
+  t.tick(59999);
+  CHECK(t.shown(59999) == ST_NEEDS);
+  t.tick(60000);
+  CHECK(t.shown(60000) == ST_IDLE);
+  t.startTest(ST_DONE, 60000);  // done duration 3 s
+  t.tick(62999);
+  CHECK(t.shown(62999) == ST_DONE);
+  t.tick(63000);
+  CHECK(t.shown(63000) == ST_IDLE);
+  dur[ST_WORKING] = 3600;  // the longest duration: shown the whole hour, no 10 s cap
+  t.startTest(ST_WORKING, 100000);
+  t.tick(100000 + 3599999);
+  CHECK(t.shown(100000 + 3599999) == ST_WORKING);
+  t.tick(100000 + 3600000);
+  CHECK(t.shown(100000 + 3600000) == ST_IDLE);
+  dur[ST_WORKING] = 0;
+  t = Engine();
+  t.dur = dur;
   // a SNAP that doesn't change what's shown keeps the preview
   t.startTest(ST_NEEDS, 30000);
   CHECK(!(t.applySnap(mk(30, {}), 31000) & EV_TEST_ENDED) && t.shown(31000) == ST_NEEDS);
