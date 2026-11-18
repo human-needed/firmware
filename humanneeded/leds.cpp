@@ -50,10 +50,10 @@ static float ease(float x) {
   return x * x * (3 - 2 * x);
 }
 
-// 0..1 wave over one animation cycle: 0 at the start and end, 1 halfway. Cycles start and end
-// dim, so the fade-in doesn't eat into the first one and the last runs out into the next state.
+// 0..1 wave over one animation cycle: 1 at the start and end, 0 halfway. Every cycle that varies
+// brightness starts and ends at full, so the fades run to and from full.
 static float wave(uint32_t t) {
-  return 0.5f - 0.5f * cosf(2 * PI * (t % ANIM_MS) / ANIM_MS);
+  return 0.5f + 0.5f * cosf(2 * PI * (t % ANIM_MS) / ANIM_MS);
 }
 
 // 1 between on and off (ms), 0 outside, with eased edges `edge` ms long instead of a hard step.
@@ -72,17 +72,20 @@ static float lightLevel(uint8_t light, uint32_t t, int i) {
     case LIGHT_OFF:     return 0;
     case LIGHT_BREATHE: return 0.35f + 0.65f * wave(t);  // floor keeps the hue true
     case LIGHT_PULSE:   return 0.2f + 0.8f * wave(t);
-    case LIGHT_BLINK:   return square(t % ANIM_MS, 100, 600, 60);  // on half a second, soft edges
+    case LIGHT_BLINK:   return 1 - square(t % ANIM_MS, 220, 720, 60);  // off half a second, soft edges
     case LIGHT_HEARTBEAT: {
-      // Two quick beats, then a rest.
-      uint32_t p = t % ANIM_MS;
-      return 0.15f + 0.85f * max(square(p, 150, 250, 33), square(p, 360, 460, 33));
+      // Two quick beats, then a rest. The first beat spans the join between cycles.
+      uint32_t p = (t + 66) % ANIM_MS;
+      return 0.15f + 0.85f * max(square(p, 0, 99, 33), square(p, 210, 309, 33));
     }
     case LIGHT_FLICKER: {
       // Candle-like: a few out-of-step waves, offset per pixel (whole numbers of them per cycle).
-      float a = 2 * PI * (t % ANIM_MS) / ANIM_MS;
+      uint32_t p = t % ANIM_MS;
+      float a = 2 * PI * p / ANIM_MS;
       float f = sinf(2 * a + i) * sinf(a + 2 * i) + 0.5f * sinf(5 * a + 3 * i);
-      return constrain(0.7f + 0.25f * f, 0.3f, 1.0f);
+      // Eased in from full at the start of the cycle and back to full at the end.
+      float depth = 1 - constrain(0.7f + 0.25f * f, 0.3f, 1.0f);
+      return 1 - depth * ease(min(p, ANIM_MS - p) / 120.0f);
     }
     case LIGHT_SPIN: {
       // A comet tail chasing around the ring once per cycle.
