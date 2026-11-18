@@ -1,7 +1,7 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "2.0.2"
+#define FW_VERSION "2.0.3"
 #define PROTO_VERSION 2           // hn-usb/2, pm/contracts/usb-protocol.md
 #define USB_PRODUCT_NAME "HumanNeeded"
 #define USB_VID_HN 0x2E8A         // Raspberry Pi
