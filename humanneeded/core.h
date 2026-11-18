@@ -10,6 +10,7 @@
 #define SNAP_MAX_ENTRIES 32
 #define LEASE_MIN_S      5
 #define LEASE_MAX_S      600
+#define LIGHT_FADE_MS    250   // fade between lights; not part of a state's duration
 #define TEST_UNTIL_CLEARED_MS 60000  // TEST of a state with duration 0 (as long as it lasts)
 
 // ---- Reply buffer: everything is built here, then sent in chunks. ----
@@ -76,8 +77,11 @@ struct Engine {
   int testState = -1;                       // TEST preview, or -1
   uint32_t testEnd = 0, testSince = 0;
   int testBase = -1;                        // what was shown under the preview when it began
+  uint16_t leadMs = 0;                      // added to limited durations: the light's fade-in
   const uint16_t *dur = nullptr;            // per-state duration in seconds (settings), 0 = no limit
 
+  // How long a state with a limit stays shown (0 = no limit): fade-in, then its duration.
+  uint32_t shownMs(uint8_t st) const;
   // Applies a validated snapshot.
   int applySnap(const Snap &s, uint32_t now);
   // FLASH done: the done light for doneSeconds (at least 1).

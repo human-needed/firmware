@@ -1,7 +1,7 @@
 #pragma once
 // All board pins and build-time switches live here.
 
-#define FW_VERSION "2.0.4"
+#define FW_VERSION "2.0.5"
 #define PROTO_VERSION 2           // hn-usb/2, pm/contracts/usb-protocol.md
 #define USB_PRODUCT_NAME "HumanNeeded"
 #define USB_VID_HN 0x2E8A         // Raspberry Pi
@@ -54,8 +54,6 @@
 
 // ---- Behaviour constants ----
 #define HELLO_MS            1500    // hello spin length
-#define FADE_MS             400     // cross-fade between states (eased)
-#define ANIM_FADE_MS        120     // the same into an animated light, so its first cycle stays whole
 #define ANIM_MS             1000    // every light animation is one cycle of this length
 #define FRAME_MS            5       // LED frame period: 200 fps, so temporal dithering doesn't flicker
 #define CAP_DOWN_MS         40.0f   // current cap eases down this fast when a sound starts...

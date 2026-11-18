@@ -150,9 +150,14 @@ const char *parseSnap(char *args, Snap &out) {
 
 // ---- Engine ----
 
-bool Engine::within(uint8_t st, uint32_t since, uint32_t now) const {
+uint32_t Engine::shownMs(uint8_t st) const {
   uint32_t d = dur ? dur[st] : 0;
-  return d == 0 || now - since < d * 1000UL;
+  return d ? leadMs + d * 1000UL : 0;
+}
+
+bool Engine::within(uint8_t st, uint32_t since, uint32_t now) const {
+  uint32_t d = shownMs(st);
+  return d == 0 || now - since < d;
 }
 
 State Engine::base(uint32_t now) const {
@@ -218,13 +223,13 @@ int Engine::flashDone(uint32_t now, uint16_t doneSeconds) {
   if (doneSeconds < 1) doneSeconds = 1;
   doneOn = true;
   doneSince = now;
-  doneEnd = now + doneSeconds * 1000UL;
+  doneEnd = now + leadMs + doneSeconds * 1000UL;
   return checkTest(now);
 }
 
 void Engine::startTest(int state, uint32_t now) {
-  uint32_t d = dur ? dur[state] : 0;
-  uint32_t ms = d == 0 ? TEST_UNTIL_CLEARED_MS : d * 1000UL;  // contract 1.3 (D-060)
+  uint32_t ms = shownMs(state);
+  if (ms == 0) ms = TEST_UNTIL_CLEARED_MS;  // contract 1.3 (D-060)
   testState = state;
   testEnd = now + ms;
   testSince = now;

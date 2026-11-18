@@ -332,6 +332,7 @@ void setup() {
 
   loadSettings();
   engine.dur = settingsDurations;
+  engine.leadMs = LIGHT_FADE_MS;  // a state's duration is its light effect, after the fade-in
   ledsBegin();
   audioBegin();
   ledsHello();  // power-up is light only, no sound

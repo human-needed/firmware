@@ -1,5 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
+#include "core.h"
 #include "leds.h"
 #include "settings.h"
 
@@ -231,18 +232,19 @@ void ledsRender(State state, uint32_t since, bool dark, bool sound) {
     lastSince = since;
   }
 
-  // Cross-fade: eased, and mixed on a perceptual scale (square root of light) so it neither
-  // jumps at the start nor crawls at the end.
+  // Fade (LIGHT_FADE_MS) from the last frame shown to this light's first frame, eased and mixed
+  // on a perceptual scale (square root of light) so it neither jumps at the start nor crawls at
+  // the end. The effect starts after it and runs for the state's duration: whole cycles.
   RGB base = stateBase(state);
   uint8_t light = settings.state[state].light;
-  bool animated = light != LIGHT_OFF && light != LIGHT_SOLID;
-  float mix = ease((t - changeMs) / (float)(animated ? ANIM_FADE_MS : FADE_MS));
-  uint32_t start = since ? since : changeMs;  // animations run from when the state started
+  float mix = ease((t - changeMs) / (float)LIGHT_FADE_MS);
+  uint32_t elapsed = t - (since ? since : changeMs);
+  uint32_t effect = elapsed > LIGHT_FADE_MS ? elapsed - LIGHT_FADE_MS : 0;
   for (int i = 0; i < LED_COUNT; i++) {
     if (helloActive) {
       shown[i] = helloColor(t - helloStart, i);
     } else {
-      RGB to = target(base, light, t - start, i);
+      RGB to = target(base, light, effect, i);
       shown[i] = mix >= 1 ? to : RGB{fadeChannel(from[i].r, to.r, mix), fadeChannel(from[i].g, to.g, mix),
                                      fadeChannel(from[i].b, to.b, mix)};
     }
