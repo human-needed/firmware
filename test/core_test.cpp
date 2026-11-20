@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
 // PC unit tests for the protocol logic (core.cpp, settings.cpp). No hardware needed.
 //   g++ -std=gnu++17 -I../humanneeded core_test.cpp ../humanneeded/core.cpp ../humanneeded/settings.cpp -o core_test && ./core_test
 #include <stdio.h>

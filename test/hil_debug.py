@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: FSL-1.1-ALv2
 """Hardware checks that need a debug build (-DHN_DEBUG): amp switching, LED current cap, watchdog,
 USB suspend. The debug build adds STATUS "dbg" and a HANG command.
 

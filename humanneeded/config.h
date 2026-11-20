@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
 #pragma once
 // All board pins and build-time switches live here.
 

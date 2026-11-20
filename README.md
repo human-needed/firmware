@@ -129,3 +129,17 @@ powershell -ExecutionPolicy Bypass -File release.ps1
 It builds a UF2 for every board (`hn-v1` and `hn-v2`), publishes them as one GitHub
 release, and updates `latest.json` in the website repo,
 which is what the settings page checks. Push the website repo to offer the update.
+
+## License
+
+The HumanNeeded firmware is source-available under the [Functional Source License, Version 1.1,
+ALv2 Future License](LICENSE) (FSL-1.1-ALv2). You may use, copy, change and share it for any
+purpose except a competing product or service. Two years after each release, that release's code
+also becomes available under the Apache License 2.0. The puck's hardware design is not part of
+this repository and is not licensed with it. Libraries the build uses (the
+[arduino-pico](https://github.com/earlephilhower/arduino-pico) core,
+[Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)) keep their own licences.
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (commits need a DCO sign-off).
+
+© 2026 HumanNeeded · [human-needed.com](https://human-needed.com)

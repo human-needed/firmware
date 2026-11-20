@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
 #pragma once
 // Protocol logic with no hardware in it (hn-usb/2, pm/contracts/usb-protocol.md).
 // Builds both in the sketch and on the PC: test/core_test.cpp unit-tests it.

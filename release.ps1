@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
 # Builds the firmware for every board, publishes it as a GitHub release, and points the
 # settings page's "Update firmware" button at it:
 #   GitHub release v<version> on human-needed/firmware with humanneeded-<board>-<version>.uf2
