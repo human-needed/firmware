@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: FSL-1.1-ALv2
 """Hardware-in-loop test: drives a real puck through every hn-usb/2 command and the lease rules.
 
     pip install pyserial

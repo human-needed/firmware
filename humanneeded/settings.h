@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
 #pragma once
 // Settings: values, parsing, JSON and the stored format. No hardware here (flash I/O is in
 // humanneeded.ino), so it is unit-tested on the PC too.

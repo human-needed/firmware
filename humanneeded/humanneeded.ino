@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
 // HumanNeeded firmware 2.0: a USB desk puck that shows what your AI coding agents need.
 // The HumanNeeded app owns the puck and sends full-state snapshots under a lease.
 // Protocol: hn-usb/2 (pm/contracts/usb-protocol.md in the project; summary in README.md).
